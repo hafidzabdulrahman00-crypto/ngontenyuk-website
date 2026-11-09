@@ -96,7 +96,7 @@ const SUPABASE_URL = 'https://jbsfvxzqzqdxcxmgxscr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
-let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [];
+let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], sessionRenderToken = 0;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
 function clearMsg(id){$(id).classList.add('hidden');}
@@ -104,20 +104,36 @@ function safe(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 function statusTag(s){const cls=s==='available'?'green':s==='maintenance'?'orange':'';return '<span class="tag '+cls+'">'+safe(label[s]||s)+'</span>';}
 function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
 function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
-async function loadProfile(user){
+function resetWorkspace(){
+ currentProfile=null;productsCache=[];unitsCache=[];
+ document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
+ $('page-dashboard').classList.remove('hidden');
+ document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.page==='dashboard'));
+ $('statProducts').textContent='—';$('statUnits').textContent='—';$('statAvailable').textContent='—';$('statMaintenance').textContent='—';
+ $('recentRows').innerHTML='<tr><td colspan="5">Memuat data…</td></tr>';
+ $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
+ $('stockProduct').innerHTML='<option value="">Pilih produk…</option>';
+ $('stockForm').reset();$('stockQty').value=1;$('stockCost').value=0;
+ $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
+ ['globalMsg','stockMsg','productMsg','loginMsg'].forEach(clearMsg);
+ document.querySelectorAll('.owner-only').forEach(el=>el.classList.add('hidden'));
+}
+async function loadProfile(user,token){
  const {data,error}=await db.from('profiles').select('full_name,role').eq('id',user.id).single();
+ if(token!==sessionRenderToken||currentUser?.id!==user.id)return;
  if(error) throw new Error('Profil akun tidak ditemukan atau tidak dapat dibaca. Pastikan user sudah memiliki baris di tabel profiles.');
+ if(!['owner','admin','staff'].includes(data.role)) throw new Error('Role akun tidak memiliki akses Staff RMS.');
  currentProfile=data;
  $('userBadge').textContent=(data.full_name||user.email)+' · '+data.role;
  document.querySelectorAll('.owner-only').forEach(el=>el.classList.toggle('hidden',!['owner','admin'].includes(data.role)));
- if(!['owner','admin','staff'].includes(data.role)) throw new Error('Role akun tidak memiliki akses Staff RMS.');
 }
-async function loadData(){
+async function loadData(token=sessionRenderToken){
  const [p,u]=await Promise.all([
   db.from('products').select('id,name,brand,unit_prefix,connectors,is_active').order('name'),
   db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name)').order('created_at',{ascending:false})
  ]);
  if(p.error) throw p.error;if(u.error) throw u.error;
+ if(token!==sessionRenderToken)return;
  productsCache=p.data||[];unitsCache=u.data||[];
  $('statProducts').textContent=productsCache.filter(x=>x.is_active).length;
  $('statUnits').textContent=unitsCache.length;
@@ -128,13 +144,22 @@ async function loadData(){
  $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
 }
-async function refresh(){try{await loadData();clearMsg('globalMsg');}catch(e){showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
+async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
 async function handleSession(session){
- currentUser=session?.user||null;
+ const nextUser=session?.user||null;
+ const identityChanged=currentUser?.id!==nextUser?.id;
+ const token=++sessionRenderToken;
+ currentUser=nextUser;
+ if(identityChanged||!nextUser)resetWorkspace();
  setView(!!session);
- if(!session){currentProfile=null;$('userBadge').textContent='Belum masuk';return;}
- try{await loadProfile(session.user);await refresh();}
- catch(e){showMsg('globalMsg',e.message||'Gagal memuat profil.','error');}
+ if(!session){$('userBadge').textContent='Belum masuk';return;}
+ currentProfile=null;
+ $('userBadge').textContent='Memuat profil…';
+ try{
+  await loadProfile(session.user,token);
+  if(token!==sessionRenderToken||currentUser?.id!==session.user.id)return;
+  await refresh(token);
+ }catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat profil.','error');}
 }
 $('loginForm').addEventListener('submit',async e=>{
  e.preventDefault();clearMsg('loginMsg');
