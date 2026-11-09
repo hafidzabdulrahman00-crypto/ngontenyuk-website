@@ -32,6 +32,7 @@
  <aside class="side">
   <button class="nav active" data-page="dashboard">Ringkasan<small>Dashboard operasional</small></button>
   <button class="nav" data-page="inventory">Inventaris<small>Daftar unit microphone</small></button>
+  <button class="nav" data-page="rentals">Penyewaan<small>Buat dan pantau rental</small></button>
   <button class="nav" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
  </aside>
@@ -49,6 +50,25 @@
   <section id="page-inventory" class="page hidden">
    <div class="page-head"><div><h2>Inventaris</h2><p>Semua unit yang tercatat di database.</p></div><button class="btn secondary" id="inventoryRefresh">Muat ulang</button></div>
    <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="page-rentals" class="page hidden">
+   <div class="page-head"><div><h2>Penyewaan</h2><p>Buat transaksi sewa dan pantau jadwal unit.</p></div><button class="btn secondary" id="rentalRefresh">Muat ulang</button></div>
+   <div class="panel"><h3>Buat penyewaan</h3>
+    <form id="rentalForm">
+     <div class="form-grid">
+      <div class="field"><label for="rentalCustomerName">Nama pelanggan</label><input id="rentalCustomerName" required maxlength="120" placeholder="Nama lengkap"></div>
+      <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
+      <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
+      <div class="field"><label for="rentalDeposit">Deposit (Rp)</label><input id="rentalDeposit" type="number" min="0" step="1000" value="0"></div>
+      <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
+      <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
+      <div class="field full"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
+     </div>
+     <div class="notice" id="rentalQuote">Pilih unit dan waktu sewa untuk melihat estimasi tarif.</div>
+     <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Deposit</th><th>Status</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
@@ -96,7 +116,7 @@ const SUPABASE_URL = 'https://jbsfvxzqzqdxcxmgxscr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
-let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], sessionRenderToken = 0;
+let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], sessionRenderToken = 0;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
 function clearMsg(id){$(id).classList.add('hidden');}
@@ -105,13 +125,17 @@ function statusTag(s){const cls=s==='available'?'green':s==='maintenance'?'orang
 function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
 function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
 function resetWorkspace(){
- currentProfile=null;productsCache=[];unitsCache=[];
+ currentProfile=null;productsCache=[];unitsCache=[];ratesCache=[];rentalsCache=[];
  document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
  $('page-dashboard').classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.page==='dashboard'));
  $('statProducts').textContent='—';$('statUnits').textContent='—';$('statAvailable').textContent='—';$('statMaintenance').textContent='—';
  $('recentRows').innerHTML='<tr><td colspan="5">Memuat data…</td></tr>';
  $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
+ $('rentalRows').innerHTML='<tr><td colspan="7">Memuat data…</td></tr>';
+ $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>';
+ $('rentalForm').reset();$('rentalDeposit').value=0;
+ $('rentalQuote').textContent='Pilih unit dan waktu sewa untuk melihat estimasi tarif.';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>';
  $('stockForm').reset();$('stockQty').value=1;$('stockCost').value=0;
  $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
@@ -128,13 +152,14 @@ async function loadProfile(user,token){
  document.querySelectorAll('.owner-only').forEach(el=>el.classList.toggle('hidden',!['owner','admin'].includes(data.role)));
 }
 async function loadData(token=sessionRenderToken){
- const [p,u]=await Promise.all([
+ const [p,u,r]=await Promise.all([
   db.from('products').select('id,name,brand,unit_prefix,connectors,is_active').order('name'),
-  db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name)').order('created_at',{ascending:false})
+  db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name)').order('created_at',{ascending:false}),
+  db.from('product_rates').select('product_id,duration_hours,price').eq('is_active',true)
  ]);
- if(p.error) throw p.error;if(u.error) throw u.error;
+ if(p.error) throw p.error;if(u.error) throw u.error;if(r.error) throw r.error;
  if(token!==sessionRenderToken)return;
- productsCache=p.data||[];unitsCache=u.data||[];
+ productsCache=p.data||[];unitsCache=u.data||[];ratesCache=r.data||[];
  $('statProducts').textContent=productsCache.filter(x=>x.is_active).length;
  $('statUnits').textContent=unitsCache.length;
  $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available').length;
@@ -143,6 +168,39 @@ async function loadData(token=sessionRenderToken){
  $('recentRows').innerHTML=rows;
  $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
+ $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
+ await loadRentals(token);
+}
+
+function rupiah(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);}
+function rentalPrice(productId,hours){
+ const rates=ratesCache.filter(x=>x.product_id===productId).sort((a,b)=>a.duration_hours-b.duration_hours);
+ if(!rates.length||!Number.isFinite(hours)||hours<=0)return null;
+ let remaining=Math.ceil(hours),total=0,parts=[];
+ while(remaining>0){
+  if(remaining>=24){const rate=rates.find(x=>x.duration_hours===24);if(!rate)return null;total+=Number(rate.price);parts.push(rate);remaining-=24;continue;}
+  const rate=rates.find(x=>x.duration_hours>=remaining);
+  if(!rate)return null;
+  total+=Number(rate.price);parts.push(rate);remaining=0;
+ }
+ return {total,parts};
+}
+function updateRentalQuote(){
+ const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
+ const start=$('rentalStart').value,end=$('rentalEnd').value;
+ if(!unit||!start||!end){$('rentalQuote').textContent='Pilih unit dan waktu sewa untuk melihat estimasi tarif.';return;}
+ const duration=(new Date(end)-new Date(start))/3600000;
+ if(!Number.isFinite(duration)||duration<=0){$('rentalQuote').textContent='Waktu selesai harus setelah waktu mulai.';return;}
+ const quote=rentalPrice(unit.product_id,duration);
+ if(!quote){$('rentalQuote').textContent='Tarif produk belum lengkap. Periksa paket 4, 6, 12, dan 24 jam di pengaturan tarif.';return;}
+ const rounded=quote.parts.map(x=>x.duration_hours+' jam').join(' + ');
+ $('rentalQuote').textContent='Durasi: '+duration.toFixed(2)+' jam · Paket: '+rounded+' · Estimasi tarif: '+rupiah(quote.total);
+}
+async function loadRentals(token=sessionRenderToken){
+ const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,deposit_amount,status,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ if(error)throw error;if(token!==sessionRenderToken)return;
+ rentalsCache=data||[];
+ $('rentalRows').innerHTML=rentalsCache.map(x=>'<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td>'+rupiah(x.deposit_amount)+'</td><td>'+safe(x.status)+'</td></tr>').join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
 }
 async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
 async function handleSession(session){
@@ -169,12 +227,41 @@ $('loginForm').addEventListener('submit',async e=>{
 });
 $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
-$('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);
+$('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);
+['rentalUnit','rentalStart','rentalEnd'].forEach(id=>$(id).addEventListener('change',updateRentalQuote));
 document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
  $('page-'+btn.dataset.page).classList.remove('hidden');
 }));
+
+$('rentalForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('rentalMsg');
+ if(!currentUser||!currentProfile){showMsg('rentalMsg','Sesi login belum siap. Silakan muat ulang halaman.','error');return;}
+ const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
+ const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
+ const startDate=new Date(startValue),endDate=new Date(endValue);
+ const duration=(endDate-startDate)/3600000;
+ if(!unit||unit.operational_status!=='available'){showMsg('rentalMsg','Unit tidak tersedia. Muat ulang data dan pilih unit lain.','error');return;}
+ if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0){showMsg('rentalMsg','Periksa tanggal dan waktu penyewaan.','error');return;}
+ if(startDate.getTime()<Date.now()-60000){showMsg('rentalMsg','Waktu mulai tidak boleh berada di masa lalu.','error');return;}
+ const quote=rentalPrice(unit.product_id,duration);
+ if(!quote){showMsg('rentalMsg','Tarif produk belum lengkap. Lengkapi paket tarif terlebih dahulu.','error');return;}
+ const startISO=startDate.toISOString(),endISO=endDate.toISOString();
+ const {data:conflicts,error:conflictError}=await db.from('rentals').select('id').eq('unit_id',unit.id).in('status',['reserved','confirmed','ongoing']).lt('start_at',endISO).gt('end_at',startISO).limit(1);
+ if(conflictError){showMsg('rentalMsg','Gagal memeriksa jadwal unit: '+conflictError.message,'error');return;}
+ if(conflicts?.length){showMsg('rentalMsg','Unit sudah memiliki jadwal penyewaan yang bertabrakan. Pilih waktu atau unit lain.','error');return;}
+ const customerName=$('rentalCustomerName').value.trim(),customerPhone=$('rentalCustomerPhone').value.trim();
+ const {data:customer,error:customerError}=await db.from('customers').insert({name:customerName,phone:customerPhone}).select('id').single();
+ if(customerError){showMsg('rentalMsg','Gagal menyimpan data pelanggan: '+customerError.message,'error');return;}
+ const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
+ const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:Number($('rentalDeposit').value||0),status:'reserved',notes:$('rentalNotes').value.trim()||null};
+ const {error:rentalError}=await db.from('rentals').insert(payload);
+ if(rentalError){showMsg('rentalMsg','Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
+ showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat dengan status reserved.','success');
+ $('rentalForm').reset();$('rentalDeposit').value=0;updateRentalQuote();
+ await refresh();
+});
 $('stockProduct').addEventListener('change',()=>{
  const p=productsCache.find(x=>x.id===$('stockProduct').value);
  document.querySelectorAll('input[name="stockConnector"]').forEach(c=>c.checked=false);
