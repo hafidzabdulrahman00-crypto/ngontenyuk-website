@@ -194,7 +194,7 @@ function updateRentalQuote(){
  const quote=rentalPrice(unit.product_id,duration);
  if(!quote){$('rentalQuote').textContent='Tarif produk belum lengkap. Periksa paket 4, 6, 12, dan 24 jam di pengaturan tarif.';return;}
  const rounded=quote.parts.map(x=>x.duration_hours+' jam').join(' + ');
- $('rentalQuote').textContent='Durasi: '+duration.toFixed(2)+' jam · Paket: '+rounded+' · Estimasi tarif: '+rupiah(quote.total);
+ $('rentalQuote').textContent='ESTIMASI TARIF SEWA: '+rupiah(quote.total)+' · Durasi '+duration.toFixed(2)+' jam · Paket '+rounded+'. Harga dihitung otomatis dan akan diperbarui saat unit atau jadwal diubah.';
 }
 async function loadRentals(token=sessionRenderToken){
  const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,deposit_amount,status,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
@@ -228,7 +228,7 @@ $('loginForm').addEventListener('submit',async e=>{
 $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);
-['rentalUnit','rentalStart','rentalEnd'].forEach(id=>$(id).addEventListener('change',updateRentalQuote));
+['rentalUnit','rentalStart','rentalEnd'].forEach(id=>{ $(id).addEventListener('input',updateRentalQuote); $(id).addEventListener('change',updateRentalQuote); });
 document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
