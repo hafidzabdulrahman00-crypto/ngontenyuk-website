@@ -134,7 +134,7 @@ function resetWorkspace(){
  $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
  $('rentalRows').innerHTML='<tr><td colspan="7">Memuat data…</td></tr>';
  $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>';
- $('rentalForm').reset();$('rentalDeposit').value=0;
+ $('rentalForm').reset();
  $('rentalQuote').textContent='Pilih unit dan waktu sewa untuk melihat estimasi tarif.';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>';
  $('stockForm').reset();$('stockQty').value=1;$('stockCost').value=0;
@@ -259,7 +259,7 @@ $('rentalForm').addEventListener('submit',async e=>{
  const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
  const {error:rentalError}=await db.from('rentals').insert(payload);
  if(rentalError){showMsg('rentalMsg','Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
- showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat dengan status reserved.','success');
+ const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.','success');
  $('rentalForm').reset();updateRentalQuote();
  await refresh();
 });
