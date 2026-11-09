@@ -59,7 +59,7 @@
       <div class="field"><label for="rentalCustomerName">Nama pelanggan</label><input id="rentalCustomerName" required maxlength="120" placeholder="Nama lengkap"></div>
       <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
       <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
-      <div class="field"><label for="rentalDeposit">Deposit (Rp)</label><input id="rentalDeposit" type="number" min="0" step="1000" value="0"></div>
+      <div class="field full"><label>Persyaratan sewa</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas asli (KTM/KTP) diperlihatkan saat COD</label><label><input type="checkbox" id="rentalAgreement"> Surat perjanjian sewa ditandatangani</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi uang kembali sudah disampaikan</label></div><p class="hint">Transaksi tetap dapat disimpan meskipun persyaratan belum lengkap. Statusnya akan menunggu verifikasi.</p></div>
       <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
       <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
       <div class="field full"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
@@ -68,7 +68,7 @@
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
     </form>
    </div>
-   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Deposit</th><th>Status</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
@@ -197,10 +197,10 @@ function updateRentalQuote(){
  $('rentalQuote').textContent='ESTIMASI TARIF SEWA: '+rupiah(quote.total)+' · Durasi '+duration.toFixed(2)+' jam · Paket '+rounded+'. Harga dihitung otomatis dan akan diperbarui saat unit atau jadwal diubah.';
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,deposit_amount,status,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
- $('rentalRows').innerHTML=rentalsCache.map(x=>'<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td>'+rupiah(x.deposit_amount)+'</td><td>'+safe(x.status)+'</td></tr>').join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
+ $('rentalRows').innerHTML=rentalsCache.map(x=>{const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;return '<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="identity_verified" '+(x.identity_verified?'checked':'')+'> Identitas</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="agreement_signed" '+(x.agreement_signed?'checked':'')+'> Perjanjian</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="guarantee_explained" '+(x.guarantee_explained?'checked':'')+'> Garansi</label></td><td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental: '+safe(x.status)+'</span></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
 }
 async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
 async function handleSession(session){
@@ -228,6 +228,7 @@ $('loginForm').addEventListener('submit',async e=>{
 $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);
+$('rentalRows').addEventListener('change',async e=>{const input=e.target;if(!(input instanceof HTMLInputElement)||input.type!=='checkbox')return;const id=input.dataset.rentalId,field=input.dataset.requirement;const allowed=['identity_verified','agreement_signed','guarantee_explained'];if(!id||!allowed.includes(field))return;input.disabled=true;const {error}=await db.from('rentals').update({[field]:input.checked}).eq('id',id);if(error){showMsg('globalMsg','Gagal memperbarui persyaratan: '+error.message,'error');await loadRentals();return;}await loadRentals();});
 ['rentalUnit','rentalStart','rentalEnd'].forEach(id=>{ $(id).addEventListener('input',updateRentalQuote); $(id).addEventListener('change',updateRentalQuote); });
 document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
@@ -255,11 +256,11 @@ $('rentalForm').addEventListener('submit',async e=>{
  const {data:customer,error:customerError}=await db.from('customers').insert({name:customerName,phone:customerPhone}).select('id').single();
  if(customerError){showMsg('rentalMsg','Gagal menyimpan data pelanggan: '+customerError.message,'error');return;}
  const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
- const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:Number($('rentalDeposit').value||0),status:'reserved',notes:$('rentalNotes').value.trim()||null};
+ const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
  const {error:rentalError}=await db.from('rentals').insert(payload);
  if(rentalError){showMsg('rentalMsg','Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
  showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat dengan status reserved.','success');
- $('rentalForm').reset();$('rentalDeposit').value=0;updateRentalQuote();
+ $('rentalForm').reset();updateRentalQuote();
  await refresh();
 });
 $('stockProduct').addEventListener('change',()=>{
