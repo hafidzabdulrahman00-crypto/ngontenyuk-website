@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4efff">
+<title>Staff RMS — NgontenYuk.co</title>
+<style>
+:root{--ink:#28213b;--muted:#77718a;--purple:#7654c8;--purple2:#9275df;--line:#e9e3f4;--paper:#fff;--bg:#f7f4fc;--good:#198754;--bad:#c03952;--shadow:0 12px 34px #39245b12}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#eee6ff 0,transparent 32%),var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.shell{max-width:1200px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:15px;background:linear-gradient(145deg,#9b80e7,#6745bb);display:grid;place-items:center;color:white;font-weight:800;box-shadow:0 8px 20px #7654c844}.brand h1{font-size:19px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:10px}.pill{border:1px solid var(--line);border-radius:99px;background:#ffffffb8;padding:8px 12px;color:var(--muted);font-size:12px}.btn{border:0;border-radius:12px;padding:11px 15px;background:var(--purple);color:#fff;font-weight:650;box-shadow:0 6px 15px #7654c82b}.btn:hover{background:#6543b7}.btn.secondary{background:#f0eafd;color:#5d43a3;box-shadow:none}.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none}.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px}.side,.panel,.stat,.login-card{background:#ffffffd9;border:1px solid #fff;border-radius:20px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}.side{padding:12px;height:max-content;position:sticky;top:18px}.nav{width:100%;text-align:left;border:0;background:transparent;padding:12px;border-radius:12px;color:#69617d;margin:2px 0;font-weight:600}.nav.active,.nav:hover{background:#f0eafd;color:#5d43a3}.nav small{display:block;font-weight:400;color:#9991aa;font-size:11px}.content{min-width:0}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:4px 0 18px}.page-head h2{font-size:25px;margin:0}.page-head p{color:var(--muted);margin:5px 0 0}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{padding:17px}.stat span{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:27px;margin-top:6px}.panel{padding:20px;margin-bottom:16px}.panel h3{margin:0 0 14px;font-size:16px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:560px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted);font-weight:650;background:#faf8fd}td{color:#443d55}.tag{display:inline-block;padding:4px 8px;border-radius:99px;background:#f0eafd;color:#674bb0;font-size:11px}.tag.green{background:#e7f6ee;color:#167747}.tag.orange{background:#fff2df;color:#a6630c}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:#665d78;font-weight:650}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 12px;color:var(--ink);outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:#a58ce5;box-shadow:0 0 0 3px #9275df20}.checks{display:flex;gap:16px;flex-wrap:wrap;padding:8px 0}.checks label{font-size:13px;color:#5c536e;font-weight:500}.hint{font-size:12px;color:var(--muted);margin:4px 0 0}.actions{display:flex;gap:9px;align-items:center;margin-top:16px}.notice{padding:12px 14px;border-radius:12px;background:#f0eafd;color:#5d43a3;font-size:13px;margin:12px 0}.notice.error{background:#fff0f1;color:var(--bad)}.notice.success{background:#eaf7ef;color:var(--good)}.hidden{display:none!important}.login{min-height:80vh;display:grid;place-items:center}.login-card{width:min(420px,100%);padding:28px}.login-card h2{margin:0 0 5px}.login-card p{color:var(--muted);margin:0 0 20px}.login-card .field{margin:13px 0}.empty{color:var(--muted);padding:22px;text-align:center}.foot{color:#9891a6;text-align:center;font-size:11px;padding:20px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:4px}.nav{white-space:nowrap;width:auto;flex:0 0 auto}.nav small{display:none}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.shell{padding:14px}.top{align-items:flex-start}.top-actions{flex-direction:column;align-items:flex-end}.pill{display:none}.page-head h2{font-size:21px}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:23px}.panel{padding:15px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+ <div class="brand"><div class="logo">NY</div><div><h1>NgontenYuk.co <span style="font-weight:400;color:#8b829d">/ Staff RMS</span></h1><p>Ruang operasional penyewaan microphone</p></div></div>
+ <div class="top-actions"><span class="pill" id="userBadge">Belum masuk</span><button class="btn ghost hidden" id="logoutBtn">Keluar</button></div>
+</header>
+<section id="loginView" class="login">
+ <div class="login-card">
+  <h2>Masuk Staff</h2><p>Gunakan akun yang sudah terdaftar di Supabase Auth.</p>
+  <form id="loginForm">
+   <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required placeholder="nama@email.com"></div>
+   <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required placeholder="Password akun"></div>
+   <button class="btn" style="width:100%;margin-top:8px" type="submit">Masuk ke dashboard</button>
+  </form><div id="loginMsg" class="notice hidden"></div>
+ </div>
+</section>
+<section id="appView" class="layout hidden">
+ <aside class="side">
+  <button class="nav active" data-page="dashboard">Ringkasan<small>Dashboard operasional</small></button>
+  <button class="nav" data-page="inventory">Inventaris<small>Daftar unit microphone</small></button>
+  <button class="nav" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
+  <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
+ </aside>
+ <main class="content">
+  <section id="page-dashboard" class="page">
+   <div class="page-head"><div><h2>Ringkasan</h2><p>Ikhtisar data operasional NgontenYuk.co.</p></div><button class="btn secondary" id="refreshBtn">Muat ulang</button></div>
+   <div class="stats">
+    <div class="stat"><span>Total produk aktif</span><strong id="statProducts">—</strong></div>
+    <div class="stat"><span>Total unit</span><strong id="statUnits">—</strong></div>
+    <div class="stat"><span>Unit tersedia</span><strong id="statAvailable">—</strong></div>
+    <div class="stat"><span>Sedang perawatan</span><strong id="statMaintenance">—</strong></div>
+   </div>
+   <div class="panel"><h3>Unit terbaru</h3><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th></tr></thead><tbody id="recentRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="page-inventory" class="page hidden">
+   <div class="page-head"><div><h2>Inventaris</h2><p>Semua unit yang tercatat di database.</p></div><button class="btn secondary" id="inventoryRefresh">Muat ulang</button></div>
+   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="page-stock" class="page hidden">
+   <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
+   <div class="panel"><h3>Informasi stok masuk</h3>
+    <form id="stockForm">
+     <div class="form-grid">
+      <div class="field full"><label for="stockProduct">Produk</label><select id="stockProduct" required><option value="">Pilih produk…</option></select></div>
+      <div class="field"><label for="stockQty">Jumlah unit</label><input id="stockQty" type="number" min="1" max="50" value="1" required></div>
+      <div class="field"><label for="stockCondition">Kondisi awal</label><select id="stockCondition"><option value="new">Baru</option><option value="good" selected>Baik</option><option value="fair">Cukup</option><option value="damaged">Rusak</option></select></div>
+      <div class="field"><label for="stockDate">Tanggal pembelian</label><input id="stockDate" type="date"></div>
+      <div class="field"><label for="stockCost">Modal per unit (Rp)</label><input id="stockCost" type="number" min="0" value="0"></div>
+      <div class="field full"><label>Konektor unit</label><div class="checks"><label><input type="checkbox" name="stockConnector" value="Lightning"> Lightning</label><label><input type="checkbox" name="stockConnector" value="USB-C"> USB-C</label><label><input type="checkbox" name="stockConnector" value="3.5mm"> 3.5mm</label></div><p class="hint">Kosongkan pilihan agar sistem memakai konektor bawaan produk.</p></div>
+      <div class="field full"><label for="stockNotes">Catatan (opsional)</label><textarea id="stockNotes" rows="2" placeholder="Contoh: pembelian batch November"></textarea></div>
+     </div>
+     <div class="actions"><button class="btn" type="submit">Simpan stok</button></div><div id="stockMsg" class="notice hidden"></div>
+    </form>
+   </div>
+  </section>
+  <section id="page-product" class="page hidden">
+   <div class="page-head"><div><h2>Produk baru</h2><p>Daftarkan model microphone baru sekaligus stok awalnya.</p></div></div>
+   <div class="panel"><h3>Data produk</h3>
+    <form id="productForm">
+     <div class="form-grid">
+      <div class="field"><label for="productName">Nama produk</label><input id="productName" required placeholder="Contoh: Hollyland Lark M2"></div>
+      <div class="field"><label for="productBrand">Brand</label><input id="productBrand" placeholder="Contoh: Hollyland"></div>
+      <div class="field"><label for="productCategory">Kategori</label><input id="productCategory" value="Wireless Microphone"></div>
+      <div class="field"><label for="productPrefix">Prefix kode unit</label><input id="productPrefix" required placeholder="Contoh: HOL-LM2" maxlength="20"><p class="hint">Gunakan prefix unik, huruf kapital/angka dan tanda minus.</p></div>
+      <div class="field full"><label>Konektor yang didukung produk</label><div class="checks"><label><input type="checkbox" name="productConnector" value="Lightning"> Lightning</label><label><input type="checkbox" name="productConnector" value="USB-C"> USB-C</label><label><input type="checkbox" name="productConnector" value="3.5mm"> 3.5mm</label></div></div>
+      <div class="field full"><label for="productDescription">Deskripsi</label><textarea id="productDescription" rows="2" placeholder="Deskripsi singkat produk"></textarea></div>
+      <div class="field"><label for="initialQty">Stok awal (unit)</label><input id="initialQty" type="number" min="0" max="50" value="1"></div>
+      <div class="field"><label for="initialCost">Modal per unit (Rp)</label><input id="initialCost" type="number" min="0" value="0"></div>
+     </div>
+     <div class="actions"><button class="btn" type="submit">Buat produk</button></div><div id="productMsg" class="notice hidden"></div>
+    </form>
+   </div>
+  </section>
+  <div id="globalMsg" class="notice hidden"></div>
+ </main>
+</section>
+<div class="foot">NgontenYuk.co · Staff RMS · Akses dibatasi berdasarkan role akun</div>
+</div>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL = 'https://jbsfvxzqzqdxcxmgxscr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [];
+const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
+function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
+function clearMsg(id){$(id).classList.add('hidden');}
+function safe(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function statusTag(s){const cls=s==='available'?'green':s==='maintenance'?'orange':'';return '<span class="tag '+cls+'">'+safe(label[s]||s)+'</span>';}
+function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
+function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
+async function loadProfile(user){
+ const {data,error}=await db.from('profiles').select('full_name,role').eq('id',user.id).single();
+ if(error) throw new Error('Profil akun tidak ditemukan atau tidak dapat dibaca. Pastikan user sudah memiliki baris di tabel profiles.');
+ currentProfile=data;
+ $('userBadge').textContent=(data.full_name||user.email)+' · '+data.role;
+ document.querySelectorAll('.owner-only').forEach(el=>el.classList.toggle('hidden',!['owner','admin'].includes(data.role)));
+ if(!['owner','admin','staff'].includes(data.role)) throw new Error('Role akun tidak memiliki akses Staff RMS.');
+}
+async function loadData(){
+ const [p,u]=await Promise.all([
+  db.from('products').select('id,name,brand,unit_prefix,connectors,is_active').order('name'),
+  db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name)').order('created_at',{ascending:false})
+ ]);
+ if(p.error) throw p.error;if(u.error) throw u.error;
+ productsCache=p.data||[];unitsCache=u.data||[];
+ $('statProducts').textContent=productsCache.filter(x=>x.is_active).length;
+ $('statUnits').textContent=unitsCache.length;
+ $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available').length;
+ $('statMaintenance').textContent=unitsCache.filter(x=>x.operational_status==='maintenance').length;
+ const rows=unitsCache.slice(0,8).map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td></tr>').join('')||'<tr><td colspan="5" class="empty">Belum ada unit.</td></tr>';
+ $('recentRows').innerHTML=rows;
+ $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
+ $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
+}
+async function refresh(){try{await loadData();clearMsg('globalMsg');}catch(e){showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
+async function handleSession(session){
+ currentUser=session?.user||null;
+ setView(!!session);
+ if(!session){currentProfile=null;$('userBadge').textContent='Belum masuk';return;}
+ try{await loadProfile(session.user);await refresh();}
+ catch(e){showMsg('globalMsg',e.message||'Gagal memuat profil.','error');}
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('loginMsg');
+ const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+ if(error){showMsg('loginMsg',error.message,'error');return;}
+ await handleSession(data.session);
+});
+$('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
+db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
+$('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);
+document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
+ document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
+ $('page-'+btn.dataset.page).classList.remove('hidden');
+}));
+$('stockProduct').addEventListener('change',()=>{
+ const p=productsCache.find(x=>x.id===$('stockProduct').value);
+ document.querySelectorAll('input[name="stockConnector"]').forEach(c=>c.checked=false);
+ if(p)document.querySelectorAll('input[name="stockConnector"]').forEach(c=>c.disabled=!(p.connectors||[]).includes(c.value));
+});
+$('stockForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('stockMsg');
+ if(!currentUser){showMsg('stockMsg','Silakan masuk kembali.','error');return;}
+ const productId=$('stockProduct').value,qty=Number($('stockQty').value),cost=Number($('stockCost').value||0);
+ const selected=[...document.querySelectorAll('input[name="stockConnector"]:checked')].map(x=>x.value);
+ const args={p_product_id:productId,p_quantity:qty,p_purchase_date:$('stockDate').value||null,p_purchase_cost:cost,p_condition:$('stockCondition').value,p_connectors:selected.length?selected:null,p_notes:$('stockNotes').value.trim()||null};
+ const {data,error}=await db.rpc('add_inventory_stock',args);
+ if(error){showMsg('stockMsg',error.message,'error');return;}
+ showMsg('stockMsg','Berhasil menambahkan '+data.length+' unit: '+data.map(x=>x.unit_code).join(', '),'success');
+ $('stockForm').reset();$('stockQty').value=1;$('stockCost').value=0;
+ await refresh();
+});
+$('productForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('productMsg');
+ if(!['owner','admin'].includes(currentProfile?.role)){showMsg('productMsg','Hanya owner/admin yang dapat membuat produk baru.','error');return;}
+ const name=$('productName').value.trim(),prefix=$('productPrefix').value.trim().toUpperCase();
+ if(!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(prefix)){showMsg('productMsg','Prefix hanya boleh huruf kapital, angka, dan tanda minus.','error');return;}
+ const con=[...document.querySelectorAll('input[name="productConnector"]:checked')].map(x=>x.value);
+ if(!con.length){showMsg('productMsg','Pilih minimal satu jenis konektor.','error');return;}
+ const qty=Number($('initialQty').value),cost=Number($('initialCost').value||0);
+ if(qty<0||qty>50||!Number.isInteger(qty)){showMsg('productMsg','Stok awal harus bilangan bulat 0–50.','error');return;}
+ const payload={name,brand:$('productBrand').value.trim()||null,category:$('productCategory').value.trim()||null,unit_prefix:prefix,connectors:con,description:$('productDescription').value.trim()||null,is_active:true};
+ const {data:product,error}=await db.from('products').insert(payload).select('id,name').single();
+ if(error){showMsg('productMsg',error.message,'error');return;}
+ if(qty>0){
+  const {data:created,error:stockError}=await db.rpc('add_inventory_stock',{p_product_id:product.id,p_quantity:qty,p_purchase_date:null,p_purchase_cost:cost,p_condition:'good',p_connectors:null,p_notes:'Stok awal saat produk dibuat'});
+  if(stockError){showMsg('productMsg','Produk berhasil dibuat, tetapi stok awal gagal ditambahkan: '+stockError.message+'. Buka menu Tambah stok untuk melanjutkan.','error');await refresh();return;}
+  showMsg('productMsg','Produk '+product.name+' berhasil dibuat. Unit awal: '+created.map(x=>x.unit_code).join(', '),'success');
+ }else{showMsg('productMsg','Produk '+product.name+' berhasil dibuat tanpa stok awal.','success');}
+ $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
+ await refresh();
+});
+(async()=>{const {data:{session}}=await db.auth.getSession();await handleSession(session);})();
+</script>
+</body>
+</html>
