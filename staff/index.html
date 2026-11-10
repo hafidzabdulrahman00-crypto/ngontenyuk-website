@@ -50,7 +50,7 @@
   </section>
   <section id="page-inventory" class="page hidden">
    <div class="page-head"><div><h2>Inventaris</h2><p>Semua unit yang tercatat di database.</p></div><button class="btn secondary" id="inventoryRefresh">Muat ulang</button></div>
-   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status operasional</th><th>Kondisi</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Status operasional</th><th>Kondisi</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-rentals" class="page hidden">
    <div class="page-head"><div><h2>Kasir & Penyewaan</h2><p>Input produk, jadwal, verifikasi persyaratan, dan pembayaran COD dari satu halaman.</p></div><button class="btn secondary" id="rentalRefresh">Muat ulang</button></div>
@@ -207,7 +207,7 @@ async function loadData(token=sessionRenderToken){
  $('statMaintenance').textContent=unitsCache.filter(x=>x.operational_status==='maintenance').length;
  const rows=unitsCache.slice(0,8).map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td></tr>').join('')||'<tr><td colspan="5" class="empty">Belum ada unit.</td></tr>';
  $('recentRows').innerHTML=rows;
- $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td><select class="status-select" data-unit-status="'+safe(x.id)+'" aria-label="Status '+safe(x.unit_code)+'">'+unitStatusOptions(x.operational_status)+'</select></td><td><select class="status-select" data-unit-condition="'+safe(x.id)+'" aria-label="Kondisi '+safe(x.unit_code)+'">'+unitConditionOptions(x.condition)+'</select></td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="7" class="empty">Belum ada unit.</td></tr>';
+ $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td><select class="status-select" data-unit-status="'+safe(x.id)+'" aria-label="Status '+safe(x.unit_code)+'">'+unitStatusOptions(x.operational_status)+'</select></td><td><select class="status-select" data-unit-condition="'+safe(x.id)+'" aria-label="Kondisi '+safe(x.unit_code)+'">'+unitConditionOptions(x.condition)+'</select></td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
  $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
  await loadRentals(token);
