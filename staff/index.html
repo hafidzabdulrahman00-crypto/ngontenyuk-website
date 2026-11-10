@@ -597,7 +597,7 @@ $('rentalForm').addEventListener('submit',async e=>{
  const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
  const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
  const {data:createdRental,error:rentalError}=await db.from('rentals').insert(payload).select('id').single();
- if(rentalError){showMsg('rentalMsg','Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
+ if(rentalError){const overlap=rentalError.code==='23P01'||/jadwal unit sudah bertabrakan/i.test(rentalError.message||'');showMsg('rentalMsg',overlap?'Penyewaan tidak dapat dibuat karena jadwal unit bertabrakan dengan rental aktif lain. Pilih waktu atau unit berbeda.':'Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
  let paymentNotice='';
  if(isCashier){
   const {data:createdPayment,error:paymentError}=await db.from('payments').insert({rental_id:createdRental.id,amount:quote.total,payment_type:'rental',payment_method:posPaymentMethod,payment_status:'pending'}).select('id').single();
