@@ -33,6 +33,7 @@
   <button class="nav active" data-page="dashboard">Ringkasan<small>Dashboard operasional</small></button>
   <button class="nav" data-page="inventory">Inventaris<small>Daftar unit microphone</small></button>
   <button class="nav" data-page="rentals">Penyewaan<small>Buat dan pantau rental</small></button>
+  <button class="nav" data-page="payments">Pembayaran<small>Tagihan dan riwayat cicilan</small></button>
   <button class="nav owner-only" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
  </aside>
@@ -69,6 +70,28 @@
     </form>
    </div>
    <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="page-payments" class="page hidden">
+   <div class="page-head"><div><h2>Pembayaran</h2><p>Catat pembayaran bertahap dan pantau sisa tagihan rental.</p></div><button class="btn secondary" id="paymentRefresh">Muat ulang</button></div>
+   <div class="stats">
+    <div class="stat"><span>Total pembayaran lunas</span><strong id="paymentPaidTotal">—</strong></div>
+    <div class="stat"><span>Pembayaran menunggu</span><strong id="paymentPendingTotal">—</strong></div>
+    <div class="stat"><span>Sisa tagihan rental</span><strong id="paymentOutstandingTotal">—</strong></div>
+    <div class="stat"><span>Transaksi belum lunas</span><strong id="paymentOpenCount">—</strong></div>
+   </div>
+   <div class="panel owner-only" id="paymentCreatePanel"><h3>Catat pembayaran</h3>
+    <form id="paymentForm">
+     <div class="form-grid">
+      <div class="field full"><label for="paymentRental">Transaksi rental</label><select id="paymentRental" required><option value="">Pilih rental…</option></select><p class="hint">Sisa yang dapat dicatat dihitung dari pembayaran berstatus pending dan paid.</p></div>
+      <div class="field"><label for="paymentAmount">Nominal pembayaran (Rp)</label><input id="paymentAmount" type="number" min="1" step="1" required placeholder="Contoh: 10000"></div>
+      <div class="field"><label for="paymentMethod">Metode pembayaran</label><select id="paymentMethod" required><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="bank_transfer">Transfer bank</option><option value="qris_manual">QRIS (konfirmasi manual)</option></select><p class="hint">Pencatatan metode saja; belum terhubung ke payment gateway.</p></div>
+     </div>
+     <div class="notice" id="paymentQuote">Pilih rental untuk melihat sisa tagihan.</div>
+     <div class="actions"><button class="btn" type="submit">Simpan pembayaran</button></div><div id="paymentMsg" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Harga rental</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Riwayat pembayaran</h3><div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kode rental</th><th>Pelanggan</th><th>Nominal</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="paymentRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
@@ -116,7 +139,7 @@ const SUPABASE_URL = 'https://jbsfvxzqzqdxcxmgxscr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
-let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], sessionRenderToken = 0;
+let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], paymentsCache = [], sessionRenderToken = 0;
 let rentalSubmitting = false;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
@@ -126,7 +149,7 @@ function statusTag(s){const cls=s==='available'?'green':s==='maintenance'?'orang
 function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
 function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
 function resetWorkspace(){
- currentProfile=null;productsCache=[];unitsCache=[];ratesCache=[];rentalsCache=[];
+ currentProfile=null;productsCache=[];unitsCache=[];ratesCache=[];rentalsCache=[];paymentsCache=[];
  document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
  $('page-dashboard').classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.page==='dashboard'));
@@ -135,6 +158,9 @@ function resetWorkspace(){
  $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
  $('rentalRows').innerHTML='<tr><td colspan="7">Memuat data…</td></tr>';
  $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>';
+ $('paymentRental').innerHTML='<option value="">Pilih rental…</option>';
+ $('paymentForm').reset();
+ $('paymentQuote').textContent='Pilih rental untuk melihat sisa tagihan.';
  $('rentalForm').reset();
  $('rentalQuote').textContent='Pilih unit dan waktu sewa untuk melihat estimasi tarif.';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>';
@@ -171,6 +197,7 @@ async function loadData(token=sessionRenderToken){
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
  $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
  await loadRentals(token);
+ await loadPayments(token);
 }
 
 function rupiah(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);}
@@ -230,6 +257,65 @@ async function loadRentals(token=sessionRenderToken){
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;const canChange=(rentalStatusTransitions[x.status]||[]).length>0;return '<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="identity_verified" '+(x.identity_verified?'checked':'')+'> Identitas</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="agreement_signed" '+(x.agreement_signed?'checked':'')+'> Perjanjian</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="guarantee_explained" '+(x.guarantee_explained?'checked':'')+'> Garansi</label></td><td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br><select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status,complete)+'</select></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
 }
+
+function paymentStatusLabel(status){
+ return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan'})[status]||status;
+}
+function paymentMethodLabel(method){
+ return ({cash:'Tunai',bank_transfer:'Transfer bank',qris_manual:'QRIS (manual)'})[method]||method||'—';
+}
+function paymentTotalsForRental(rentalId){
+ const rows=paymentsCache.filter(p=>p.rental_id===rentalId&&p.payment_type==='rental');
+ const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
+ const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
+ return {paid,pending,remaining:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid-pending),outstanding:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid)};
+}
+function updatePaymentQuote(){
+ const id=$('paymentRental').value;
+ const rental=rentalsCache.find(r=>r.id===id);
+ if(!rental){$('paymentQuote').textContent='Pilih rental untuk melihat sisa tagihan.';return;}
+ const t=paymentTotalsForRental(id);
+ $('paymentQuote').textContent='Harga '+rupiah(rental.rental_price)+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
+ $('paymentAmount').max=String(t.remaining);
+}
+async function loadPayments(token=sessionRenderToken){
+ const {data,error}=await db.from('payments')
+  .select('id,rental_id,amount,payment_type,payment_method,payment_status,paid_at,created_at')
+  .eq('payment_type','rental')
+  .order('created_at',{ascending:false})
+  .limit(300);
+ if(error)throw error;
+ if(token!==sessionRenderToken)return;
+ paymentsCache=data||[];
+ const paymentByRental=new Map();
+ for(const p of paymentsCache){
+  const a=paymentByRental.get(p.rental_id)||[];
+  a.push(p);paymentByRental.set(p.rental_id,a);
+ }
+ const eligibleRentals=rentalsCache.filter(r=>r.status!=='cancelled');
+ const summaries=eligibleRentals.map(r=>{
+  const rows=paymentByRental.get(r.id)||[];
+  const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
+  const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
+  return {r,paid,pending,remaining:Math.max(0,Number(r.rental_price||0)-paid)};
+ });
+ const totalPaid=summaries.reduce((n,x)=>n+x.paid,0);
+ const totalPending=summaries.reduce((n,x)=>n+x.pending,0);
+ const totalOutstanding=summaries.reduce((n,x)=>n+x.remaining,0);
+ $('paymentPaidTotal').textContent=rupiah(totalPaid);
+ $('paymentPendingTotal').textContent=rupiah(totalPending);
+ $('paymentOutstandingTotal').textContent=rupiah(totalOutstanding);
+ $('paymentOpenCount').textContent=summaries.filter(x=>x.remaining>0).length;
+ $('paymentRentalRows').innerHTML=summaries.map(x=>'<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+rupiah(x.r.rental_price)+'</td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada rental.</td></tr>';
+ $('paymentRows').innerHTML=paymentsCache.map(p=>{
+  const r=rentalsCache.find(x=>x.id===p.rental_id);
+  const canConfirm=['owner','admin'].includes(currentProfile?.role)&&p.payment_status==='pending';
+  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td>'+(canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'—')+'</td></tr>';
+ }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
+ $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.filter(x=>x.remaining-x.pending>0).map(x=>'<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · Sisa '+rupiah(Math.max(0,x.r.rental_price-x.paid-x.pending))+'</option>').join('');
+ updatePaymentQuote();
+}
+
 async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
 async function handleSession(session){
  const nextUser=session?.user||null;
@@ -255,7 +341,40 @@ $('loginForm').addEventListener('submit',async e=>{
 });
 $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
-$('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);
+$('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
+$('paymentRental').addEventListener('change',updatePaymentQuote);
+$('paymentRows').addEventListener('click',async e=>{
+ const btn=e.target.closest('[data-payment-confirm]');
+ if(!btn)return;
+ if(!['owner','admin'].includes(currentProfile?.role)){showMsg('globalMsg','Hanya Owner/Admin yang dapat mengonfirmasi pembayaran.','error');return;}
+ const id=btn.dataset.paymentConfirm;
+ btn.disabled=true;
+ const {error}=await db.from('payments').update({payment_status:'paid'}).eq('id',id).eq('payment_status','pending');
+ if(error){showMsg('globalMsg','Gagal mengonfirmasi pembayaran: '+error.message,'error');await loadPayments();return;}
+ showMsg('globalMsg','Pembayaran berhasil dikonfirmasi lunas.','success');
+ await refresh();
+});
+$('paymentForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('paymentMsg');
+ if(!['owner','admin'].includes(currentProfile?.role)){showMsg('paymentMsg','Hanya Owner/Admin yang dapat mencatat pembayaran.','error');return;}
+ const rentalId=$('paymentRental').value;
+ const rental=rentalsCache.find(r=>r.id===rentalId);
+ const amount=Number($('paymentAmount').value);
+ const method=$('paymentMethod').value;
+ if(!rental||!Number.isSafeInteger(amount)||amount<=0||!method){showMsg('paymentMsg','Periksa rental, nominal, dan metode pembayaran.','error');return;}
+ const totals=paymentTotalsForRental(rentalId);
+ if(amount>totals.remaining){showMsg('paymentMsg','Nominal melebihi sisa yang dapat dicatat ('+rupiah(totals.remaining)+').','error');return;}
+ const submit=$('paymentForm').querySelector('button[type="submit"]');
+ submit.disabled=true;submit.textContent='Menyimpan…';
+ try{
+  const {error}=await db.from('payments').insert({rental_id:rentalId,amount,payment_type:'rental',payment_method:method,payment_status:'pending'});
+  if(error)throw error;
+  showMsg('paymentMsg','Pembayaran '+rupiah(amount)+' berhasil dicatat dengan status menunggu konfirmasi.','success');
+  $('paymentAmount').value='';$('paymentMethod').value='';
+  await refresh();
+ }catch(err){showMsg('paymentMsg','Gagal mencatat pembayaran: '+(err.message||'Kesalahan tidak diketahui.'),'error');}
+ finally{submit.disabled=false;submit.textContent='Simpan pembayaran';}
+});
 $('rentalRows').addEventListener('change',async e=>{
  const input=e.target;
  if(input instanceof HTMLInputElement&&input.type==='checkbox'){
