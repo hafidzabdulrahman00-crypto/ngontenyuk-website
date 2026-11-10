@@ -174,16 +174,35 @@ async function loadData(token=sessionRenderToken){
 
 function rupiah(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);}
 function rentalPrice(productId,hours){
- const rates=ratesCache.filter(x=>x.product_id===productId).sort((a,b)=>a.duration_hours-b.duration_hours);
+ const rates=ratesCache
+  .filter(x=>x.product_id===productId)
+  .map(x=>({duration_hours:Number(x.duration_hours),price:Number(x.price)}))
+  .sort((a,b)=>a.duration_hours-b.duration_hours);
  if(!rates.length||!Number.isFinite(hours)||hours<=0)return null;
+
+ // Setiap blok penuh 24 jam memakai satu paket 24 jam.
+ // Sisa durasi memakai paket terkecil yang mencukupi (minimal paket 4 jam).
  let remaining=Math.ceil(hours),total=0,parts=[];
- while(remaining>0){
-  if(remaining>=24){const rate=rates.find(x=>x.duration_hours===24);if(!rate)return null;total+=Number(rate.price);parts.push(rate);remaining-=24;continue;}
-  const rate=rates.find(x=>x.duration_hours>=remaining);
-  if(!rate)return null;
-  total+=Number(rate.price);parts.push(rate);remaining=0;
+ const dayRate=rates.find(x=>x.duration_hours===24);
+ if(remaining>=24&&!dayRate)return null;
+ while(remaining>=24){
+  total+=dayRate.price;
+  parts.push(dayRate);
+  remaining-=24;
  }
- return {total,parts};
+ if(remaining>0){
+  const remainderRate=rates.find(x=>x.duration_hours>=remaining);
+  if(!remainderRate)return null;
+  total+=remainderRate.price;
+  parts.push(remainderRate);
+ }
+ const breakdown=parts.reduce((list,part)=>{
+  const existing=list.find(x=>x.duration_hours===part.duration_hours);
+  if(existing)existing.count++;
+  else list.push({duration_hours:part.duration_hours,count:1});
+  return list;
+ },[]);
+ return {total,parts,breakdown};
 }
 function updateRentalQuote(){
  const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
@@ -194,8 +213,8 @@ function updateRentalQuote(){
  if(duration<4){$('rentalQuote').textContent='Durasi minimum penyewaan adalah 4 jam.';return;}
  const quote=rentalPrice(unit.product_id,duration);
  if(!quote){$('rentalQuote').textContent='Tarif produk belum lengkap. Periksa paket 4, 6, 12, dan 24 jam di pengaturan tarif.';return;}
- const rounded=quote.parts.map(x=>x.duration_hours+' jam').join(' + ');
- $('rentalQuote').textContent='ESTIMASI TARIF SEWA: '+rupiah(quote.total)+' · Durasi '+duration.toFixed(2)+' jam · Paket '+rounded+'. Harga dihitung otomatis dan akan diperbarui saat unit atau jadwal diubah.';
+ const rounded=quote.breakdown.map(x=>(x.count>1?x.count+' × ':'')+x.duration_hours+' jam').join(' + ');
+ $('rentalQuote').textContent='ESTIMASI TARIF SEWA: '+rupiah(quote.total)+' · Durasi '+duration.toFixed(2)+' jam · Rincian paket '+rounded+'. Setiap 24 jam penuh dihitung sebagai satu paket 24 jam; sisa durasi dibulatkan ke paket terkecil yang mencukupi.';
 }
 const rentalStatusTransitions={reserved:['confirmed','cancelled'],confirmed:['ongoing','cancelled'],ongoing:['completed'],completed:[],cancelled:[]};
 const rentalStatusLabels={reserved:'Menunggu jadwal',confirmed:'Terkonfirmasi',ongoing:'Sedang disewa',completed:'Selesai',cancelled:'Dibatalkan'};
