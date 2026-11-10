@@ -312,7 +312,7 @@ async function loadPayments(token=sessionRenderToken){
   const canConfirm=['owner','admin'].includes(currentProfile?.role)&&p.payment_status==='pending';
   return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td>'+(canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'—')+'</td></tr>';
  }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
- $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.filter(x=>x.remaining-x.pending>0).map(x=>'<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · Sisa '+rupiah(Math.max(0,x.r.rental_price-x.paid-x.pending))+'</option>').join('');
+ $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,Number(x.r.rental_price||0)-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
  updatePaymentQuote();
 }
 
