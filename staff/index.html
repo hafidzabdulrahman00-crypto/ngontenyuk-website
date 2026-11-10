@@ -158,7 +158,7 @@ function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.classN
 function clearMsg(id){$(id).classList.add('hidden');}
 function safe(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function statusTag(s){const cls=s==='available'?'green':s==='maintenance'?'orange':'';return '<span class="tag '+cls+'">'+safe(label[s]||s)+'</span>';}
-function unitStatusOptions(value){return ['available','maintenance','inactive'].map(v=>'<option value="'+v+'" '+(v===value?'selected':'')+'>'+safe(label[v])+'</option>').join('');}
+function unitStatusOptions(value,condition){return ['available','maintenance','inactive'].map(v=>'<option value="'+v+'" '+(v===value?'selected':'')+' '+(v==='available'&&condition==='damaged'?'disabled':'')+'>'+safe(label[v])+(v==='available'&&condition==='damaged'?' (perbaiki kondisi dahulu)':'')+'</option>').join('');}
 function unitConditionOptions(value){return ['new','good','fair','damaged'].map(v=>'<option value="'+v+'" '+(v===value?'selected':'')+'>'+safe(label[v])+'</option>').join('');}
 function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
 function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
@@ -203,13 +203,13 @@ async function loadData(token=sessionRenderToken){
  productsCache=p.data||[];unitsCache=u.data||[];ratesCache=r.data||[];
  $('statProducts').textContent=productsCache.filter(x=>x.is_active).length;
  $('statUnits').textContent=unitsCache.length;
- $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available').length;
+ $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged').length;
  $('statMaintenance').textContent=unitsCache.filter(x=>x.operational_status==='maintenance').length;
  const rows=unitsCache.slice(0,8).map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td></tr>').join('')||'<tr><td colspan="5" class="empty">Belum ada unit.</td></tr>';
  $('recentRows').innerHTML=rows;
- $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td><select class="status-select" data-unit-status="'+safe(x.id)+'" aria-label="Status '+safe(x.unit_code)+'">'+unitStatusOptions(x.operational_status)+'</select></td><td><select class="status-select" data-unit-condition="'+safe(x.id)+'" aria-label="Kondisi '+safe(x.unit_code)+'">'+unitConditionOptions(x.condition)+'</select></td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
+ $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td><select class="status-select" data-unit-status="'+safe(x.id)+'" aria-label="Status '+safe(x.unit_code)+'">'+unitStatusOptions(x.operational_status,x.condition)+'</select></td><td><select class="status-select" data-unit-condition="'+safe(x.id)+'" aria-label="Kondisi '+safe(x.unit_code)+'">'+unitConditionOptions(x.condition)+'</select></td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
- $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
+ $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
  await loadRentals(token);
  await loadPayments(token);
 }
@@ -408,9 +408,9 @@ $('inventoryRows').addEventListener('change',async e=>{
  }
  control.disabled=true;
  try{
-  const {data,error}=await db.from('units').update({[field]:value}).eq('id',id).select('id').single();
+  const updatePayload={[field]:value};\n  if(isCondition&&value==='damaged'&&unit.operational_status==='available')updatePayload.operational_status='maintenance';\n  const {data,error}=await db.from('units').update(updatePayload).eq('id',id).select('id').single();
   if(error)throw error;
-  showMsg('globalMsg','Data '+unit.unit_code+' berhasil diperbarui.','success');
+  showMsg('globalMsg','Data '+unit.unit_code+' berhasil diperbarui.'+(isCondition&&value==='damaged'&&unit.operational_status==='available'?' Status operasional otomatis diubah menjadi perawatan.':''),'success');
   await refresh();
  }catch(err){
   showMsg('globalMsg','Gagal memperbarui '+(isStatus?'status':'kondisi')+' unit: '+(err.message||'Kesalahan tidak diketahui.'),'error');
@@ -567,7 +567,7 @@ $('rentalForm').addEventListener('submit',async e=>{
  const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
  const startDate=new Date(startValue),endDate=new Date(endValue);
  const duration=(endDate-startDate)/3600000;
- if(!unit||unit.operational_status!=='available'){showMsg('rentalMsg','Unit tidak tersedia. Muat ulang data dan pilih unit lain.','error');return;}
+ if(!unit||unit.operational_status!=='available'||unit.condition==='damaged'){showMsg('rentalMsg','Unit tidak tersedia atau kondisinya rusak. Muat ulang data dan pilih unit lain.','error');return;}
  const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
  if(!requirementsComplete){showMsg('rentalMsg','Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.','error');return;}
  const isCashier=['owner','admin'].includes(currentProfile?.role);
