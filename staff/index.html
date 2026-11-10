@@ -299,6 +299,18 @@ async function loadPayments(token=sessionRenderToken){
  if(error)throw error;
  if(token!==sessionRenderToken)return;
  paymentsCache=data||[];
+ let correctionAuditByPayment=new Map();
+ let voidAuditByPayment=new Map();
+ if(['owner','admin'].includes(currentProfile?.role)){
+  const [correctionResult,voidResult]=await Promise.all([
+   db.from('payment_correction_audit').select('payment_id,old_amount,new_amount,reason,changed_at').order('changed_at',{ascending:false}).limit(300),
+   db.from('payment_void_audit').select('payment_id,amount,reason,previous_status,voided_at').order('voided_at',{ascending:false}).limit(300)
+  ]);
+  if(correctionResult.error)throw correctionResult.error;
+  if(voidResult.error)throw voidResult.error;
+  for(const item of correctionResult.data||[])if(!correctionAuditByPayment.has(item.payment_id))correctionAuditByPayment.set(item.payment_id,item);
+  for(const item of voidResult.data||[])if(!voidAuditByPayment.has(item.payment_id))voidAuditByPayment.set(item.payment_id,item);
+ }
  const paymentByRental=new Map();
  for(const p of paymentsCache){
   const a=paymentByRental.get(p.rental_id)||[];
@@ -326,7 +338,13 @@ async function loadPayments(token=sessionRenderToken){
   const confirmButton=canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'';
   const correctionButton=canManage?'<button class="btn ghost" data-payment-correct="'+safe(p.id)+'" type="button">Koreksi nominal</button>':'';
   const voidButton=canManage?'<button class="btn ghost" data-payment-void="'+safe(p.id)+'" type="button">Batalkan</button>':'';
-  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+voidButton+'</div></td></tr>';
+  const voidAudit=voidAuditByPayment.get(p.id);
+  const correctionAudit=correctionAuditByPayment.get(p.id);
+  const auditDetails=[
+   voidAudit?'<span class="hint">Alasan pembatalan: '+safe(voidAudit.reason)+'</span>':'',
+   correctionAudit?'<span class="hint">Koreksi: '+rupiah(correctionAudit.old_amount)+' → '+rupiah(correctionAudit.new_amount)+' · '+safe(correctionAudit.reason)+'</span>':''
+  ].filter(Boolean).join('<br>');
+  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span>'+(auditDetails?'<br>'+auditDetails:'')+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+voidButton+'</div></td></tr>';
  }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
  $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,Number(x.r.rental_price||0)-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
  updatePaymentQuote();
@@ -378,7 +396,7 @@ $('paymentRows').addEventListener('click',async e=>{
   const payment=paymentsCache.find(p=>p.id===voidBtn.dataset.paymentVoid);
   if(!payment)return;
   const r=rentalsCache.find(x=>x.id===payment.rental_id);
-  const reason=prompt('Alasan pembatalan pembayaran '+(r?.rental_code||'')+' sebesar '+rupiah(payment.amount)+':','Salah input pembayaran; pelanggan hanya membayar satu kali Rp45.000.');
+  const reason=prompt('Alasan pembatalan pembayaran '+(r?.rental_code||'')+' sebesar '+rupiah(payment.amount)+':','Salah input atau transaksi duplikat.');
   if(reason===null)return;
   if(reason.trim().length<5){showMsg('globalMsg','Alasan pembatalan minimal 5 karakter.','error');return;}
   if(!confirm('Batalkan transaksi '+rupiah(payment.amount)+'? Transaksi tidak dihapus dan akan tersimpan di audit.'))return;
