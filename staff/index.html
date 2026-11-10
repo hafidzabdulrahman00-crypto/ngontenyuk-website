@@ -582,7 +582,7 @@ $('rentalForm').addEventListener('submit',async e=>{
   }
  }
  const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.'+paymentNotice,'success');
- $('rentalForm').reset();$('rentalPosPaymentMethod').value='';updateRentalQuote();
+ $('rentalForm').reset();$('rentalPosPaymentMethod').value='';$('cashReceivedWrap').classList.add('hidden');$('cashReceived').checked=false;updateRentalQuote();
  await refresh();
  }catch(error){
   showMsg('rentalMsg','Terjadi kesalahan saat menyimpan penyewaan: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
