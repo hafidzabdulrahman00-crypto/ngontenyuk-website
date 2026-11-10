@@ -91,7 +91,19 @@
     </form>
    </div>
    <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Harga rental</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
-   <div class="panel"><h3>Riwayat pembayaran</h3><div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kode rental</th><th>Pelanggan</th><th>Nominal</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="paymentRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Riwayat pembayaran</h3>
+    <form id="paymentCorrectionForm" class="hidden" style="margin:0 0 18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#faf8fd">
+     <h4 style="margin:0 0 12px">Koreksi nominal pembayaran</h4>
+     <p class="hint" id="paymentCorrectionInfo">Pilih transaksi yang akan dikoreksi.</p>
+     <input id="paymentCorrectionId" type="hidden">
+     <div class="form-grid">
+      <div class="field"><label for="paymentCorrectionAmount">Nominal yang benar (Rp)</label><input id="paymentCorrectionAmount" type="number" min="1" step="1" required></div>
+      <div class="field"><label for="paymentCorrectionReason">Alasan koreksi (wajib)</label><input id="paymentCorrectionReason" maxlength="300" minlength="5" required placeholder="Contoh: salah input nominal"></div>
+     </div>
+     <div class="actions"><button class="btn" id="paymentCorrectionSubmit" type="submit">Simpan koreksi</button><button class="btn ghost" id="paymentCorrectionCancel" type="button">Batal</button></div>
+     <div id="paymentCorrectionMsg" class="notice hidden"></div>
+    </form>
+    <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kode rental</th><th>Pelanggan</th><th>Nominal</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="paymentRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
@@ -309,8 +321,11 @@ async function loadPayments(token=sessionRenderToken){
  $('paymentRentalRows').innerHTML=summaries.map(x=>'<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+rupiah(x.r.rental_price)+'</td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada rental.</td></tr>';
  $('paymentRows').innerHTML=paymentsCache.map(p=>{
   const r=rentalsCache.find(x=>x.id===p.rental_id);
-  const canConfirm=['owner','admin'].includes(currentProfile?.role)&&p.payment_status==='pending';
-  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td>'+(canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'—')+'</td></tr>';
+  const canManage=['owner','admin'].includes(currentProfile?.role)&&['pending','paid'].includes(p.payment_status);
+  const canConfirm=canManage&&p.payment_status==='pending';
+  const confirmButton=canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'';
+  const correctionButton=canManage?'<button class="btn ghost" data-payment-correct="'+safe(p.id)+'" type="button">Koreksi nominal</button>':'';
+  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+'</div></td></tr>';
  }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
  $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,Number(x.r.rental_price||0)-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
  updatePaymentQuote();
@@ -356,6 +371,20 @@ db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(sessio
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
 $('paymentRental').addEventListener('change',updatePaymentQuote);
 $('paymentRows').addEventListener('click',async e=>{
+ const correctBtn=e.target.closest('[data-payment-correct]');
+ if(correctBtn){
+  if(!['owner','admin'].includes(currentProfile?.role)){showMsg('globalMsg','Hanya Owner/Admin yang dapat mengoreksi pembayaran.','error');return;}
+  const payment=paymentsCache.find(p=>p.id===correctBtn.dataset.paymentCorrect);
+  if(!payment)return;
+  $('paymentCorrectionId').value=payment.id;
+  $('paymentCorrectionAmount').value=String(Math.round(Number(payment.amount)));
+  $('paymentCorrectionReason').value='';
+  $('paymentCorrectionInfo').textContent='Nominal saat ini '+rupiah(payment.amount)+' · Status '+paymentStatusLabel(payment.payment_status)+'. Status pembayaran tidak akan berubah.';
+  $('paymentCorrectionForm').classList.remove('hidden');
+  clearMsg('paymentCorrectionMsg');
+  $('paymentCorrectionAmount').focus();
+  return;
+ }
  const btn=e.target.closest('[data-payment-confirm]');
  if(!btn)return;
  if(!['owner','admin'].includes(currentProfile?.role)){showMsg('globalMsg','Hanya Owner/Admin yang dapat mengonfirmasi pembayaran.','error');return;}
@@ -365,6 +394,36 @@ $('paymentRows').addEventListener('click',async e=>{
  if(error){showMsg('globalMsg','Gagal mengonfirmasi pembayaran: '+error.message,'error');await loadPayments();return;}
  showMsg('globalMsg','Pembayaran berhasil dikonfirmasi lunas.','success');
  await refresh();
+});
+$('paymentCorrectionCancel').addEventListener('click',()=>{
+ $('paymentCorrectionForm').classList.add('hidden');
+ $('paymentCorrectionForm').reset();
+ clearMsg('paymentCorrectionMsg');
+});
+$('paymentCorrectionForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ clearMsg('paymentCorrectionMsg');
+ if(!['owner','admin'].includes(currentProfile?.role)){showMsg('paymentCorrectionMsg','Hanya Owner/Admin yang dapat mengoreksi pembayaran.','error');return;}
+ const paymentId=$('paymentCorrectionId').value;
+ const newAmount=Number($('paymentCorrectionAmount').value);
+ const reason=$('paymentCorrectionReason').value.trim();
+ if(!paymentId||!Number.isSafeInteger(newAmount)||newAmount<=0||reason.length<5){
+  showMsg('paymentCorrectionMsg','Isi nominal positif dan alasan minimal 5 karakter.','error');return;
+ }
+ const submit=$('paymentCorrectionSubmit');
+ submit.disabled=true;submit.textContent='Menyimpan…';
+ try{
+  const {data,error}=await db.rpc('correct_payment_amount',{p_payment_id:paymentId,p_new_amount:newAmount,p_reason:reason});
+  if(error)throw error;
+  showMsg('globalMsg','Nominal pembayaran berhasil dikoreksi. Riwayat koreksi tersimpan.','success');
+  $('paymentCorrectionForm').classList.add('hidden');
+  $('paymentCorrectionForm').reset();
+  await refresh();
+ }catch(err){
+  showMsg('paymentCorrectionMsg','Koreksi gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');
+ }finally{
+  submit.disabled=false;submit.textContent='Simpan koreksi';
+ }
 });
 $('paymentForm').addEventListener('submit',async e=>{
  e.preventDefault();clearMsg('paymentMsg');
