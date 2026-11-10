@@ -117,6 +117,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], sessionRenderToken = 0;
+let rentalSubmitting = false;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
 function clearMsg(id){$(id).classList.add('hidden');}
@@ -291,7 +292,14 @@ document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>
 }));
 
 $('rentalForm').addEventListener('submit',async e=>{
- e.preventDefault();clearMsg('rentalMsg');
+ e.preventDefault();
+ if(rentalSubmitting)return;
+ rentalSubmitting=true;
+ const submitButton=$('rentalForm').querySelector('button[type="submit"]');
+ const originalButtonText=submitButton.textContent;
+ submitButton.disabled=true;submitButton.textContent='Menyimpan…';
+ try{
+ clearMsg('rentalMsg');
  if(!currentUser||!currentProfile){showMsg('rentalMsg','Sesi login belum siap. Silakan muat ulang halaman.','error');return;}
  const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
  const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
@@ -308,8 +316,16 @@ $('rentalForm').addEventListener('submit',async e=>{
  if(conflictError){showMsg('rentalMsg','Gagal memeriksa jadwal unit: '+conflictError.message,'error');return;}
  if(conflicts?.length){showMsg('rentalMsg','Unit sudah memiliki jadwal penyewaan yang bertabrakan. Pilih waktu atau unit lain.','error');return;}
  const customerName=$('rentalCustomerName').value.trim(),customerPhone=$('rentalCustomerPhone').value.trim();
- const {data:customer,error:customerError}=await db.from('customers').insert({name:customerName,phone:customerPhone}).select('id').single();
- if(customerError){showMsg('rentalMsg','Gagal menyimpan data pelanggan: '+customerError.message,'error');return;}
+ if(!/^[+0-9][0-9+() .-]{7,28}$/.test(customerPhone)){showMsg('rentalMsg','Masukkan nomor WhatsApp yang valid.','error');return;}
+ // Gunakan data pelanggan yang sudah ada berdasarkan nomor WhatsApp agar tidak membuat duplikat.
+ const {data:existingCustomers,error:customerLookupError}=await db.from('customers').select('id').eq('phone',customerPhone).limit(1);
+ if(customerLookupError){showMsg('rentalMsg','Gagal memeriksa data pelanggan: '+customerLookupError.message,'error');return;}
+ let customer=existingCustomers?.[0]||null;
+ if(!customer){
+  const {data:createdCustomer,error:customerError}=await db.from('customers').insert({name:customerName,phone:customerPhone}).select('id').single();
+  if(customerError){showMsg('rentalMsg','Gagal menyimpan data pelanggan: '+customerError.message,'error');return;}
+  customer=createdCustomer;
+ }
  const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
  const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
  const {error:rentalError}=await db.from('rentals').insert(payload);
@@ -317,6 +333,13 @@ $('rentalForm').addEventListener('submit',async e=>{
  const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.','success');
  $('rentalForm').reset();updateRentalQuote();
  await refresh();
+ }catch(error){
+  showMsg('rentalMsg','Terjadi kesalahan saat menyimpan penyewaan: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
+ }finally{
+  rentalSubmitting=false;
+  submitButton.disabled=false;
+  submitButton.textContent=originalButtonText;
+ }
 });
 $('stockProduct').addEventListener('change',()=>{
  const p=productsCache.find(x=>x.id===$('stockProduct').value);
