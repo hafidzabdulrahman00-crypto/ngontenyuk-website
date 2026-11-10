@@ -218,15 +218,16 @@ function updateRentalQuote(){
 }
 const rentalStatusTransitions={reserved:['confirmed','cancelled'],confirmed:['ongoing','cancelled'],ongoing:['completed'],completed:[],cancelled:[]};
 const rentalStatusLabels={reserved:'Menunggu jadwal',confirmed:'Terkonfirmasi',ongoing:'Sedang disewa',completed:'Selesai',cancelled:'Dibatalkan'};
-function rentalStatusOptions(status){
- const options=[status,...(rentalStatusTransitions[status]||[])];
+function rentalStatusOptions(status,requirementsComplete){
+ const next=(rentalStatusTransitions[status]||[]).filter(value=>value!=='confirmed'||requirementsComplete);
+ const options=[status,...next];
  return options.map(value=>'<option value="'+safe(value)+'" '+(value===status?'selected':'')+'>'+safe(rentalStatusLabels[value]||value)+'</option>').join('');
 }
 async function loadRentals(token=sessionRenderToken){
  const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
- $('rentalRows').innerHTML=rentalsCache.map(x=>{const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;const canChange=(rentalStatusTransitions[x.status]||[]).length>0;return '<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="identity_verified" '+(x.identity_verified?'checked':'')+'> Identitas</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="agreement_signed" '+(x.agreement_signed?'checked':'')+'> Perjanjian</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="guarantee_explained" '+(x.guarantee_explained?'checked':'')+'> Garansi</label></td><td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br><select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status)+'</select></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
+ $('rentalRows').innerHTML=rentalsCache.map(x=>{const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;const canChange=(rentalStatusTransitions[x.status]||[]).length>0;return '<tr><td><b>'+safe(x.rental_code)+'</b></td><td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td><td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td><td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td><td>'+rupiah(x.rental_price)+'</td><td><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="identity_verified" '+(x.identity_verified?'checked':'')+'> Identitas</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="agreement_signed" '+(x.agreement_signed?'checked':'')+'> Perjanjian</label><br><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="guarantee_explained" '+(x.guarantee_explained?'checked':'')+'> Garansi</label></td><td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br><select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status,complete)+'</select></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Belum ada penyewaan.</td></tr>';
 }
 async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
 async function handleSession(session){
@@ -271,6 +272,10 @@ $('rentalRows').addEventListener('change',async e=>{
   if(!rental)return;
   const allowedNext=rentalStatusTransitions[rental.status]||[];
   if(!allowedNext.includes(nextStatus)){await loadRentals();return;}
+  if(nextStatus==='confirmed'&&!(rental.identity_verified&&rental.agreement_signed&&rental.guarantee_explained)){
+   showMsg('globalMsg','Penyewaan belum dapat dikonfirmasi. Verifikasi identitas, tanda tangan perjanjian, dan penyampaian garansi terlebih dahulu.','error');
+   await loadRentals();return;
+  }
   input.disabled=true;
   const {error}=await db.from('rentals').update({status:nextStatus}).eq('id',id);
   if(error){showMsg('globalMsg','Status tidak berhasil diubah: '+error.message,'error');await loadRentals();return;}
