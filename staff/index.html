@@ -191,6 +191,7 @@ function updateRentalQuote(){
  if(!unit||!start||!end){$('rentalQuote').textContent='Pilih unit dan waktu sewa untuk melihat estimasi tarif.';return;}
  const duration=(new Date(end)-new Date(start))/3600000;
  if(!Number.isFinite(duration)||duration<=0){$('rentalQuote').textContent='Waktu selesai harus setelah waktu mulai.';return;}
+ if(duration<4){$('rentalQuote').textContent='Durasi minimum penyewaan adalah 4 jam.';return;}
  const quote=rentalPrice(unit.product_id,duration);
  if(!quote){$('rentalQuote').textContent='Tarif produk belum lengkap. Periksa paket 4, 6, 12, dan 24 jam di pengaturan tarif.';return;}
  const rounded=quote.parts.map(x=>x.duration_hours+' jam').join(' + ');
@@ -274,6 +275,7 @@ $('rentalForm').addEventListener('submit',async e=>{
  const duration=(endDate-startDate)/3600000;
  if(!unit||unit.operational_status!=='available'){showMsg('rentalMsg','Unit tidak tersedia. Muat ulang data dan pilih unit lain.','error');return;}
  if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0){showMsg('rentalMsg','Periksa tanggal dan waktu penyewaan.','error');return;}
+ if(duration<4){showMsg('rentalMsg','Durasi minimum penyewaan adalah 4 jam.','error');return;}
  if(startDate.getTime()<Date.now()-60000){showMsg('rentalMsg','Waktu mulai tidak boleh berada di masa lalu.','error');return;}
  const quote=rentalPrice(unit.product_id,duration);
  if(!quote){showMsg('rentalMsg','Tarif produk belum lengkap. Lengkapi paket tarif terlebih dahulu.','error');return;}
