@@ -63,7 +63,7 @@
       <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas pelanggan telah dilihat langsung oleh petugas (tanpa foto/salinan KTP)</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Tidak ada foto KTP atau nomor NIK yang disimpan.</p></div>
       <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
       <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
-      <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><p class="hint">Tunai akan dicatat lunas setelah uang diterima. QRIS saat ini menunggu verifikasi manual; QR dinamis otomatis memerlukan integrasi payment gateway.</p></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
+      <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><label id="cashReceivedWrap" class="hidden"><input type="checkbox" id="cashReceived"> Uang tunai sudah diterima sesuai nominal tagihan</label><p class="hint">Tunai hanya dicatat lunas setelah penerimaan dikonfirmasi. QRIS saat ini menunggu verifikasi manual; QR dinamis otomatis memerlukan integrasi payment gateway.</p></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
      </div>
      <div class="notice" id="rentalQuote">Pilih unit dan waktu sewa untuk melihat estimasi tarif.</div>
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
@@ -389,6 +389,11 @@ $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
 $('paymentRental').addEventListener('change',updatePaymentQuote);
+$('rentalPosPaymentMethod').addEventListener('change',()=>{
+ const cash=$('rentalPosPaymentMethod').value==='cash';
+ $('cashReceivedWrap').classList.toggle('hidden',!cash);
+ $('cashReceived').checked=false;
+});
 $('paymentRows').addEventListener('click',async e=>{
  const voidBtn=e.target.closest('[data-payment-void]');
  if(voidBtn){
@@ -539,6 +544,7 @@ $('rentalForm').addEventListener('submit',async e=>{
  const isCashier=['owner','admin'].includes(currentProfile?.role);
  const posPaymentMethod=isCashier?$('rentalPosPaymentMethod').value:null;
  if(isCashier&&!['cash','qris_manual'].includes(posPaymentMethod)){showMsg('rentalMsg','Pilih metode pembayaran Tunai atau QRIS.','error');return;}
+ if(isCashier&&posPaymentMethod==='cash'&&!$('cashReceived').checked){showMsg('rentalMsg','Konfirmasi bahwa uang tunai sudah benar-benar diterima sebelum menyimpan pembayaran lunas.','error');return;}
  if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0){showMsg('rentalMsg','Periksa tanggal dan waktu penyewaan.','error');return;}
  if(duration<4){showMsg('rentalMsg','Durasi minimum penyewaan adalah 4 jam.','error');return;}
  if(startDate.getTime()<Date.now()-60000){showMsg('rentalMsg','Waktu mulai tidak boleh berada di masa lalu.','error');return;}
