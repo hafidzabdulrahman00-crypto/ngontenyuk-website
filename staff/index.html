@@ -32,7 +32,7 @@
  <aside class="side">
   <button class="nav active" data-page="dashboard">Ringkasan<small>Dashboard operasional</small></button>
   <button class="nav" data-page="inventory">Inventaris<small>Daftar unit microphone</small></button>
-  <button class="nav" data-page="rentals">Penyewaan<small>Buat dan pantau rental</small></button>
+  <button class="nav" data-page="rentals">Kasir & Penyewaan<small>Transaksi COD dan jadwal rental</small></button>
   <button class="nav" data-page="payments">Pembayaran<small>Tagihan dan riwayat cicilan</small></button>
   <button class="nav owner-only" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
@@ -53,17 +53,17 @@
    <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-rentals" class="page hidden">
-   <div class="page-head"><div><h2>Penyewaan</h2><p>Buat transaksi sewa dan pantau jadwal unit.</p></div><button class="btn secondary" id="rentalRefresh">Muat ulang</button></div>
+   <div class="page-head"><div><h2>Kasir & Penyewaan</h2><p>Input produk, jadwal, verifikasi persyaratan, dan pembayaran COD dari satu halaman.</p></div><button class="btn secondary" id="rentalRefresh">Muat ulang</button></div>
    <div class="panel"><h3>Buat penyewaan</h3>
     <form id="rentalForm">
      <div class="form-grid">
       <div class="field"><label for="rentalCustomerName">Nama pelanggan</label><input id="rentalCustomerName" required maxlength="120" placeholder="Nama lengkap"></div>
       <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
       <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
-      <div class="field full"><label>Persyaratan sewa</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas asli (KTM/KTP) diperlihatkan saat COD</label><label><input type="checkbox" id="rentalAgreement"> Surat perjanjian sewa ditandatangani</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi uang kembali sudah disampaikan</label></div><p class="hint">Transaksi tetap dapat disimpan meskipun persyaratan belum lengkap. Statusnya akan menunggu verifikasi.</p></div>
+      <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas pelanggan telah dilihat langsung oleh petugas (tanpa foto/salinan KTP)</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Tidak ada foto KTP atau nomor NIK yang disimpan.</p></div>
       <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
       <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
-      <div class="field full"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
+      <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><p class="hint">Tunai akan dicatat lunas setelah uang diterima. QRIS saat ini menunggu verifikasi manual; QR dinamis otomatis memerlukan integrasi payment gateway.</p></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
      </div>
      <div class="notice" id="rentalQuote">Pilih unit dan waktu sewa untuk melihat estimasi tarif.</div>
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
@@ -534,6 +534,11 @@ $('rentalForm').addEventListener('submit',async e=>{
  const startDate=new Date(startValue),endDate=new Date(endValue);
  const duration=(endDate-startDate)/3600000;
  if(!unit||unit.operational_status!=='available'){showMsg('rentalMsg','Unit tidak tersedia. Muat ulang data dan pilih unit lain.','error');return;}
+ const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
+ if(!requirementsComplete){showMsg('rentalMsg','Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.','error');return;}
+ const isCashier=['owner','admin'].includes(currentProfile?.role);
+ const posPaymentMethod=isCashier?$('rentalPosPaymentMethod').value:null;
+ if(isCashier&&!['cash','qris_manual'].includes(posPaymentMethod)){showMsg('rentalMsg','Pilih metode pembayaran Tunai atau QRIS.','error');return;}
  if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0){showMsg('rentalMsg','Periksa tanggal dan waktu penyewaan.','error');return;}
  if(duration<4){showMsg('rentalMsg','Durasi minimum penyewaan adalah 4 jam.','error');return;}
  if(startDate.getTime()<Date.now()-60000){showMsg('rentalMsg','Waktu mulai tidak boleh berada di masa lalu.','error');return;}
@@ -556,10 +561,22 @@ $('rentalForm').addEventListener('submit',async e=>{
  }
  const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
  const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
- const {error:rentalError}=await db.from('rentals').insert(payload);
+ const {data:createdRental,error:rentalError}=await db.from('rentals').insert(payload).select('id').single();
  if(rentalError){showMsg('rentalMsg','Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.','error');return;}
- const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.','success');
- $('rentalForm').reset();updateRentalQuote();
+ let paymentNotice='';
+ if(isCashier){
+  const {data:createdPayment,error:paymentError}=await db.from('payments').insert({rental_id:createdRental.id,amount:quote.total,payment_type:'rental',payment_method:posPaymentMethod,payment_status:'pending'}).select('id').single();
+  if(paymentError){showMsg('rentalMsg','Rental '+code+' berhasil dibuat, tetapi pencatatan pembayaran gagal: '+paymentError.message+'. Jangan buat rental ulang; catat pembayaran dari menu Pembayaran.','error');await refresh();return;}
+  if(posPaymentMethod==='cash'){
+   const {error:paidError}=await db.from('payments').update({payment_status:'paid'}).eq('id',createdPayment.id).eq('payment_status','pending');
+   if(paidError){paymentNotice=' Pembayaran tunai tersimpan tetapi belum berhasil ditandai lunas. Konfirmasi dari menu Pembayaran setelah memastikan uang diterima.';}
+   else{paymentNotice=' Pembayaran tunai '+rupiah(quote.total)+' tercatat lunas.';}
+  }else{
+   paymentNotice=' Tagihan QRIS '+rupiah(quote.total)+' tercatat menunggu verifikasi. QRIS dinamis otomatis belum aktif; konfirmasi dari menu Pembayaran setelah dana diterima.';
+  }
+ }
+ const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.'+paymentNotice,'success');
+ $('rentalForm').reset();$('rentalPosPaymentMethod').value='';updateRentalQuote();
  await refresh();
  }catch(error){
   showMsg('rentalMsg','Terjadi kesalahan saat menyimpan penyewaan: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
