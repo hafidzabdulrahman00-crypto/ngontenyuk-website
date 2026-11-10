@@ -333,6 +333,18 @@ async function handleSession(session){
   await refresh(token);
  }catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat profil.','error');}
 }
+// NAVIGASI HALAMAN RMS
+document.querySelector('.side').addEventListener('click',e=>{
+ const nav=e.target.closest('button.nav[data-page]');
+ if(!nav)return;
+ const page=nav.dataset.page;
+ if(!document.getElementById('page-'+page))return;
+ if(nav.classList.contains('owner-only')&&!['owner','admin'].includes(currentProfile?.role))return;
+ document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
+ document.getElementById('page-'+page).classList.remove('hidden');
+ document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el===nav));
+ clearMsg('globalMsg');
+});
 $('loginForm').addEventListener('submit',async e=>{
  e.preventDefault();clearMsg('loginMsg');
  const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
