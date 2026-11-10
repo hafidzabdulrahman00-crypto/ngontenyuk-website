@@ -55,13 +55,26 @@ Deno.serve(async (req) => {
     const amount = Math.round(payments.reduce((sum, p) => sum + Number(p.amount), 0));
     if (!Number.isSafeInteger(amount) || amount <= 0) return json({ error: "Nominal transaksi tidak valid." }, 400);
 
-    const { data: existing } = await admin.from("payment_gateway_transactions")
-      .select("order_id, amount, qr_url, expires_at, status")
+    // Fetch pending gateway records, then require exact payment-ID set equality.
+    // PostgREST contains() is a superset test, not an exact array equality test.
+    const { data: candidates, error: existingError } = await admin.from("payment_gateway_transactions")
+      .select("order_id, payment_ids, amount, qr_url, expires_at, status")
       .eq("provider", "midtrans").eq("status", "pending")
-      .contains("payment_ids", paymentIds)
       .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (existing && Number(existing.amount) === amount && existing.qr_url) {
+      .order("created_at", { ascending: false }).limit(100);
+    if (existingError) {
+      console.error("Cannot check existing gateway orders", existingError);
+      return json({ error: "Tidak dapat memeriksa QRIS yang masih aktif. Coba lagi." }, 500);
+    }
+    const requestedSet = [...paymentIds].sort();
+    const existing = (candidates || []).find((candidate) =>
+      Array.isArray(candidate.payment_ids) &&
+      candidate.payment_ids.length === requestedSet.length &&
+      [...candidate.payment_ids].sort().every((id, index) => id === requestedSet[index]) &&
+      Number(candidate.amount) === amount &&
+      Boolean(candidate.qr_url)
+    );
+    if (existing) {
       return json({ order_id: existing.order_id, amount, qr_url: existing.qr_url, expires_at: existing.expires_at, reused: true });
     }
 
