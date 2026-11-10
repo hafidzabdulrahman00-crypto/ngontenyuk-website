@@ -271,7 +271,7 @@ async function loadRentals(token=sessionRenderToken){
 }
 
 function paymentStatusLabel(status){
- return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan'})[status]||status;
+ return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan',voided:'Dibatalkan'})[status]||status;
 }
 function paymentMethodLabel(method){
  return ({cash:'Tunai',bank_transfer:'Transfer bank',qris_manual:'QRIS (manual)'})[method]||method||'—';
@@ -325,7 +325,8 @@ async function loadPayments(token=sessionRenderToken){
   const canConfirm=canManage&&p.payment_status==='pending';
   const confirmButton=canConfirm?'<button class="btn secondary" data-payment-confirm="'+safe(p.id)+'" type="button">Konfirmasi lunas</button>':'';
   const correctionButton=canManage?'<button class="btn ghost" data-payment-correct="'+safe(p.id)+'" type="button">Koreksi nominal</button>':'';
-  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+'</div></td></tr>';
+  const voidButton=canManage?'<button class="btn ghost" data-payment-void="'+safe(p.id)+'" type="button">Batalkan</button>':'';
+  return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+voidButton+'</div></td></tr>';
  }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
  $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,Number(x.r.rental_price||0)-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
  updatePaymentQuote();
@@ -371,6 +372,25 @@ db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(sessio
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
 $('paymentRental').addEventListener('change',updatePaymentQuote);
 $('paymentRows').addEventListener('click',async e=>{
+ const voidBtn=e.target.closest('[data-payment-void]');
+ if(voidBtn){
+  if(!['owner','admin'].includes(currentProfile?.role)){showMsg('globalMsg','Hanya Owner/Admin yang dapat membatalkan pembayaran.','error');return;}
+  const payment=paymentsCache.find(p=>p.id===voidBtn.dataset.paymentVoid);
+  if(!payment)return;
+  const r=rentalsCache.find(x=>x.id===payment.rental_id);
+  const reason=prompt('Alasan pembatalan pembayaran '+(r?.rental_code||'')+' sebesar '+rupiah(payment.amount)+':','Salah input pembayaran; pelanggan hanya membayar satu kali Rp45.000.');
+  if(reason===null)return;
+  if(reason.trim().length<5){showMsg('globalMsg','Alasan pembatalan minimal 5 karakter.','error');return;}
+  if(!confirm('Batalkan transaksi '+rupiah(payment.amount)+'? Transaksi tidak dihapus dan akan tersimpan di audit.'))return;
+  voidBtn.disabled=true;
+  try{
+   const {error}=await db.rpc('void_payment',{p_payment_id:payment.id,p_reason:reason.trim()});
+   if(error)throw error;
+   showMsg('globalMsg','Pembayaran berhasil dibatalkan dan tercatat di audit.','success');
+   await refresh();
+  }catch(err){showMsg('globalMsg','Pembatalan gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');voidBtn.disabled=false;}
+  return;
+ }
  const correctBtn=e.target.closest('[data-payment-correct]');
  if(correctBtn){
   if(!['owner','admin'].includes(currentProfile?.role)){showMsg('globalMsg','Hanya Owner/Admin yang dapat mengoreksi pembayaran.','error');return;}
