@@ -2,11 +2,40 @@
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#171323"><title>POS Kasir — NgontenYuk.co</title>
+<meta name="theme-color" content="#351078"><title>POS Kasir — NgontenYuk.co</title>
 <style>
 :root{color-scheme:light;--bg:#f7f4fc;--panel:#fff;--panel2:#faf8fd;--line:#e9e3f4;--text:#28213b;--muted:#77718a;--purple:#7654c8;--green:#198754;--orange:#a6630c;--red:#c03952}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% -10%,#38285b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{max-width:1500px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#b69aff,#7149c9);font-weight:900}.brand h1{font-size:18px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}.topright{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pill,.tag{border:1px solid var(--line);border-radius:99px;padding:7px 11px;color:var(--muted);font-size:12px}.btn{border:0;border-radius:11px;padding:11px 15px;background:var(--purple);color:#1b142b;font-weight:800}.btn.secondary{background:#33294a;color:#e9ddff}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}.btn:disabled{opacity:.45;cursor:not-allowed}.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,.8fr);gap:18px;align-items:start}.panel{background:#1c1928ed;border:1px solid var(--line);border-radius:19px;padding:18px;margin-bottom:15px;box-shadow:0 15px 50px #0003}.panel h2,.panel h3{margin:0 0 14px}.muted,.hint{color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:#c8bfd9;font-weight:700}.field input,.field select,.field textarea{width:100%;background:#13111c;border:1px solid var(--line);color:var(--text);padding:11px 12px;border-radius:10px;min-height:43px}.products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product{border:1px solid var(--line);background:var(--panel2);padding:13px;border-radius:14px}.product strong{display:block}.product small{color:var(--muted)}.product .price{color:var(--purple);font-weight:800;margin-top:7px}.product button{margin-top:10px;width:100%}.quote{background:#2c2440;border:1px solid #554277;border-radius:13px;padding:14px;margin-top:12px}.total{font-size:28px;font-weight:900;color:#d7c5ff}.steps{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}.step{padding:7px 10px;border-radius:99px;background:#272236;color:var(--muted);font-size:11px}.step.active{background:#463568;color:#e8dcff}.checkline{display:flex;gap:9px;align-items:flex-start;color:#d9d2e7;font-size:12px}.checkline input{margin-top:3px}.signature{background:#faf9ff;border:2px dashed #9d91b5;border-radius:12px;width:100%;height:150px;touch-action:none;display:block}.sigtools{display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px;color:var(--muted);font-size:11px}.receipt{white-space:pre-wrap;background:#14111e;border:1px solid var(--line);border-radius:12px;padding:12px;color:#ded7eb;font-size:12px}.notice{padding:11px 13px;border-radius:11px;background:#2c2440;color:#e5d9ff;margin:10px 0}.notice.error{background:#48232d;color:#ffdce2}.notice.success{background:#183c31;color:#c8ffea}.hidden{display:none!important}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.sticky{position:sticky;top:15px}.list{display:grid;gap:8px}.unit{padding:10px;border:1px solid var(--line);border-radius:11px;display:flex;justify-content:space-between;gap:10px;align-items:center}.unit small{display:block;color:var(--muted)}.good{color:var(--green)}.warn{color:var(--orange)}a{color:#7654c8}.cart-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:12px}.cart-item small{display:block;color:var(--muted)}.cart-item button{border:1px solid #f0d5da;background:#fff5f6;color:#b33a50;border-radius:9px;padding:6px 9px}#cartList{display:grid;gap:8px;margin-top:10px}@media(max-width:900px){.layout{grid-template-columns:1fr}.sticky{position:static}}@media(max-width:560px){.app{padding:12px}.top{align-items:flex-start}.grid,.products{grid-template-columns:1fr}.panel{padding:14px}.total{font-size:24px}}
 body{background:radial-gradient(circle at 12% -10%,#eee6ff 0,transparent 35%),var(--bg);color:var(--text)}.panel{background:#ffffffed;border-color:#fff;box-shadow:0 12px 34px #39245b12}.field label{color:#665d78}.field input,.field select,.field textarea{background:#fff;color:var(--text);border-color:var(--line)}.btn{background:var(--purple);color:#fff}.btn.secondary{background:#f0eafd;color:#5d43a3}.btn.ghost{background:#fff;color:var(--text);border-color:var(--line)}.quote{background:#f0eafd;border-color:#ded2f6}.total{color:#674bb0}.step{background:#f0eafd;color:#77718a}.step.active{background:#7654c8;color:#fff}.product{background:#fff;border-color:var(--line)}.product .price{color:#674bb0}.receipt{background:#faf8fd;color:#443d55;border-color:var(--line)}.unit{background:#fff}.checkline{display:flex;align-items:flex-start;gap:9px;width:100%;min-width:0;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.checkline input{flex:0 0 18px;width:18px;height:18px;min-width:18px;margin:2px 0 0;accent-color:#7654c8}.field.full{min-width:0}.field.full .checkline{margin:5px 0}.grid,.layout,main,aside{min-width:0}@media print{body{background:#fff;color:#111}.app>*:not(#agreementPrint){display:none!important}#agreementPrint{display:block!important;color:#111;background:#fff;padding:20px}.print-sign{display:flex;gap:30px}.print-sign img{max-width:220px;max-height:100px;border-bottom:1px solid #777}}
+
+/* NgontenYuk.co Electric Purple design refresh */
+:root{--bg:#FBFAFF;--panel:#fff;--panel2:#F7F3FF;--line:#E8E0F5;--text:#21143D;--muted:#756B88;--purple:#7136D9;--green:#198754;--orange:#A6630C;--red:#C03952}
+body{background:#FBFAFF;color:#21143D}
+.panel{background:#fff;border:1px solid #eee9f7;border-radius:14px;box-shadow:0 5px 18px rgba(53,16,120,.055)}
+.logo{background:#7136D9;border-radius:11px;color:#fff;box-shadow:0 5px 14px rgba(113,54,217,.2)}
+.btn{background:#7136D9;color:#fff;border-radius:9px;font-weight:650;box-shadow:none}
+.btn:hover{background:#5f29c4}
+.btn.secondary{background:#351078;color:#fff}
+.btn.ghost{background:#fff;color:#351078;border-color:#E8E0F5}
+.field label{color:#514568}
+.field input,.field select,.field textarea{background:#fff;color:#21143D;border-color:#E8E0F5;border-radius:9px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#A17AF0;outline:0;box-shadow:0 0 0 3px rgba(161,122,240,.18)}
+.product{background:#fff;border-color:#E8E0F5;border-radius:12px}
+.product .price{color:#7136D9}
+.quote{background:#F1EAFE;border:1px solid #E4D8FA;border-radius:12px}
+.total{color:#351078}
+.step{background:#F1EAFE;color:#756B88}
+.step.active{background:#7136D9;color:#fff}
+.receipt{background:#FBFAFF;color:#514568;border-color:#E8E0F5}
+.unit{background:#fff;border-color:#E8E0F5;border-radius:10px}
+.cart-item{border-color:#E8E0F5}
+.checkline{color:#514568}
+.checkline input{accent-color:#7136D9}
+.notice{background:#F1EAFE;color:#4c268e}
+.signature{border-color:#A17AF0}
+a{color:#7136D9}
+.pill,.tag{border-color:#E8E0F5}
+
 </style></head>
 <body><div class="app">
 <header class="top"><div class="brand"><div class="logo">NY</div><div><h1>NgontenYuk.co / POS Kasir</h1><p>Point of Sale · Rental microphone</p></div></div><div class="topright"><span class="pill" id="userBadge">Memeriksa sesi…</span><a class="btn ghost" href="./">Kembali ke Staff RMS</a><button class="btn ghost" id="logout">Keluar</button></div></header>
