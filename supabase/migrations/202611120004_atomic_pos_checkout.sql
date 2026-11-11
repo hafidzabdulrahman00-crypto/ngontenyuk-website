@@ -172,6 +172,12 @@ begin
        or v_unit.condition = 'damaged' then
       raise exception 'Unit % tidak tersedia untuk disewa.', v_unit.unit_code;
     end if;
+    if not exists (
+      select 1 from public.products p
+      where p.id = v_unit.product_id and p.is_active = true
+    ) then
+      raise exception 'Produk untuk unit % sudah tidak aktif.', v_unit.unit_code;
+    end if;
 
     -- Recalculate price in the database; never trust a client-supplied amount.
     v_hours := ceil(extract(epoch from (v_end - v_start)) / 3600.0)::integer;
