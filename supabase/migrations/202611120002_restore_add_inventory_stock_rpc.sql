@@ -77,7 +77,7 @@ begin
       p_purchase_date,
       p_purchase_cost,
       p_condition,
-      'available',
+      case when p_condition = 'damaged' then 'maintenance' else 'available' end,
       p_notes
     )
     returning units.id, units.unit_code;
