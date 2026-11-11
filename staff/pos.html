@@ -146,10 +146,11 @@ async function saveRentalAgreements(rows,tenantSig,staffSig,details){
    unitCode:unit?.unit_code||'—',
    productName:product?.name||unit?.products?.name||'Microphone'
   },tenantSig,staffSig,details);
-  const path=rental.id+'/agreement-'+Date.now()+'-'+crypto.randomUUID().slice(0,8)+'.pdf';
+  // Stable object path makes PDF upload safe to retry after partial failures.
+  const path=rental.id+'/agreement-'+rental.id+'.pdf';
   const {error:uploadError}=await db.storage.from('rental-agreements').upload(path,blob,{
    contentType:'application/pdf',
-   upsert:false
+   upsert:true
   });
   if(uploadError)throw new Error('Rental '+rental.rental_code+' tersimpan, tetapi PDF gagal diunggah: '+uploadError.message);
   const {error:updateError}=await db.from('rentals').update({
@@ -180,26 +181,104 @@ $('method').addEventListener('change',()=>{
 });
 $('method').dispatchEvent(new Event('change'));
 
-let checkoutBusy=false;$('checkout').addEventListener('click',async()=>{if(checkoutBusy)return;checkoutBusy=true;const checkoutButton=$('checkout');checkoutButton.disabled=true;checkoutButton.textContent='Memproses transaksi…';clearMessage();try{if(!selectedUnits.length)throw new Error('Tambahkan minimal satu unit ke transaksi.');if(selectedUnits.some(u=>!activeUnit(u)))throw new Error('Ada unit yang tidak lagi tersedia. Muat ulang data.');const name=$('customerName').value.trim(),phone=$('customerPhone').value.trim(),startAt=new Date($('start').value),endAt=new Date($('end').value),duration=Number($('duration').value),identity=$('identityType').value;if(!name||!/^[+0-9][0-9+() .-]{7,28}$/.test(phone))throw new Error('Lengkapi nama dan nomor WhatsApp yang valid.');if(!identity||!$('identityHeld').checked)throw new Error('Pilih jenis KTM/KTP dan konfirmasi dokumen telah diperlihatkan untuk verifikasi lalu langsung dikembalikan.');if(!$('guaranteeExplained').checked||!$('termsAccepted').checked)throw new Error('Lengkapi penjelasan jaminan dan persetujuan perjanjian.');if(!getTenantSig()||!getStaffSig())throw new Error('Kedua pihak harus menandatangani surat menggunakan stylus/jari.');if(!Number.isFinite(startAt.getTime())||startAt.getTime()<Date.now()-60000||endAt<=startAt)throw new Error('Periksa tanggal dan waktu rental.');const prices=selectedUnits.map(unit=>({unit,price:priceFor(unit.product_id,duration)}));if(prices.some(x=>!x.price))throw new Error('Tarif produk/durasi belum tersedia untuk salah satu unit.');quote=prices.reduce((sum,x)=>sum+x.price,0);renderQuote();const method=$('method').value;if(method==='cash'&&!$('cashReceived').checked)throw new Error('Konfirmasi uang tunai sudah diterima.');for(const item of prices){const {data:conflicts,error}=await db.from('rentals').select('id').eq('unit_id',item.unit.id).in('status',['reserved','confirmed','ongoing']).lt('start_at',endAt.toISOString()).gt('end_at',startAt.toISOString()).limit(1);if(error)throw error;if(conflicts?.length)throw new Error('Jadwal unit '+item.unit.unit_code+' bertabrakan dengan rental aktif.');}let {data:customer,error:customerError}=await db.from('customers').select('id').eq('phone',phone).limit(1).maybeSingle();if(customerError)throw customerError;if(customer){const upd=await db.from('customers').update({name}).eq('id',customer.id);if(upd.error)throw upd.error;}else{const ins=await db.from('customers').insert({name,phone}).select('id').single();if(ins.error)throw ins.error;customer=ins.data;}const now=new Date().toISOString(),tenantSig=getTenantSig(),staffSig=getStaffSig(),made=[];for(const item of prices){const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();const payload={rental_code:code,customer_id:customer.id,unit_id:item.unit.id,start_at:startAt.toISOString(),end_at:endAt.toISOString(),rental_price:item.price,deposit_amount:0,identity_verified:true,agreement_signed:true,guarantee_explained:true,status:'reserved',notes:'Surat sewa ditandatangani digital sederhana. Identitas '+identity+' diperlihatkan untuk verifikasi dan langsung dikembalikan.',identity_document_type:identity,identity_deposit_status:'not_received',identity_received_at:null,tenant_signature_data:tenantSig,staff_signature_data:staffSig,agreement_signed_at:now};const rental=await db.from('rentals').insert(payload).select('id,rental_code,start_at,end_at,rental_price,unit_id').single();if(rental.error){message('Sebagian rental mungkin sudah tersimpan: '+made.map(x=>x.rental_code).join(', ')+'. Jangan checkout ulang. Periksa daftar rental. Detail: '+rental.error.message,'error');return;}made.push(rental.data);const {data:paymentId,error:paymentError}=await db.rpc('record_pos_payment',{
-p_rental_id:rental.data.id,
-p_amount:item.price,
-p_payment_method:method,
-p_cash_received:method==='cash' ? $('cashReceived').checked : false
+let checkoutBusy=false;
+let pendingCheckout=null;
+$('checkout').addEventListener('click',async()=>{
+ if(checkoutBusy)return;
+ checkoutBusy=true;
+ const checkoutButton=$('checkout');
+ checkoutButton.disabled=true;
+ checkoutButton.textContent=pendingCheckout?'Melanjutkan transaksi…':'Memproses transaksi…';
+ clearMessage();
+ try{
+  if(!pendingCheckout){
+   if(!selectedUnits.length)throw new Error('Tambahkan minimal satu unit ke transaksi.');
+   if(selectedUnits.some(u=>!activeUnit(u)))throw new Error('Ada unit yang tidak lagi tersedia. Muat ulang data.');
+   const name=$('customerName').value.trim();
+   const phone=$('customerPhone').value.trim();
+   const startAt=new Date($('start').value);
+   const endAt=new Date($('end').value);
+   const duration=Number($('duration').value);
+   const identity=$('identityType').value;
+   if(!name||!/^[+0-9][0-9+() .-]{7,28}$/.test(phone))throw new Error('Lengkapi nama dan nomor WhatsApp yang valid.');
+   if(!identity||!$('identityHeld').checked)throw new Error('Pilih jenis KTM/KTP dan konfirmasi dokumen telah diperlihatkan untuk verifikasi lalu langsung dikembalikan.');
+   if(!$('guaranteeExplained').checked||!$('termsAccepted').checked)throw new Error('Lengkapi penjelasan jaminan dan persetujuan perjanjian.');
+   const tenantSig=getTenantSig(),staffSig=getStaffSig();
+   if(!tenantSig||!staffSig)throw new Error('Kedua pihak harus menandatangani surat menggunakan stylus/jari.');
+   if(!Number.isFinite(startAt.getTime())||startAt.getTime()<Date.now()-60000||endAt<=startAt)throw new Error('Periksa tanggal dan waktu rental.');
+   const method=$('method').value;
+   if(method==='cash'&&!$('cashReceived').checked)throw new Error('Konfirmasi uang tunai sudah diterima.');
+   const prices=selectedUnits.map(unit=>({unit,price:priceFor(unit.product_id,duration)}));
+   if(prices.some(x=>x.price===null||x.price<=0))throw new Error('Tarif produk/durasi belum tersedia atau tidak valid untuk salah satu unit.');
+   quote=prices.reduce((sum,x)=>sum+x.price,0);
+   renderQuote();
+   pendingCheckout={
+    checkoutId:crypto.randomUUID(),
+    customerName:name,
+    customerPhone:phone,
+    paymentMethod:method,
+    cashReceived:method==='cash'&&$('cashReceived').checked,
+    items:prices.map(({unit})=>({
+     unit_id:unit.id,
+     start_at:startAt.toISOString(),
+     end_at:endAt.toISOString(),
+     identity_document_type:identity,
+     tenant_signature_data:tenantSig,
+     staff_signature_data:staffSig
+    })),
+    tenantSig,staffSig,
+    details:{name,phone,identity,duration,staffName:profile?.full_name||user?.email||'Petugas'},
+    rentals:null,
+    total:quote
+   };
+  }else{
+   message('Melanjutkan checkout yang sama. Sistem memakai ID transaksi yang sama agar tidak membuat rental/pembayaran duplikat.','info');
+  }
+
+  if(!pendingCheckout.rentals){
+   const {data,error}=await db.rpc('create_pos_checkout',{
+    p_checkout_id:pendingCheckout.checkoutId,
+    p_customer_name:pendingCheckout.customerName,
+    p_customer_phone:pendingCheckout.customerPhone,
+    p_items:pendingCheckout.items,
+    p_payment_method:pendingCheckout.paymentMethod,
+    p_cash_received:pendingCheckout.cashReceived
+   });
+   if(error)throw error;
+   if(!Array.isArray(data)||!data.length)throw new Error('Checkout RPC tidak mengembalikan daftar rental. Periksa daftar rental sebelum mencoba transaksi baru.');
+   pendingCheckout.rentals=data;
+  }
+
+  await saveRentalAgreements(
+   pendingCheckout.rentals,
+   pendingCheckout.tenantSig,
+   pendingCheckout.staffSig,
+   pendingCheckout.details
+  );
+
+  const completed=pendingCheckout;
+  created=completed.rentals;
+  pendingCheckout=null;
+  message(
+   'Transaksi berhasil dibuat untuk '+completed.rentals.length+
+   ' unit. Total '+money(completed.total)+
+   '. Semua PDF per rental berhasil disimpan. '+
+   (completed.paymentMethod==='cash'?'Pembayaran tunai tercatat lunas.':'Pembayaran menunggu verifikasi dana masuk.'),
+   'success'
+  );
+  selectedUnits=[];
+  await load();
+  renderQuote();
+ }catch(err){
+  const retryHint=pendingCheckout
+   ? ' Data transaksi tetap tersimpan di halaman ini. Tekan tombol yang sama untuk melanjutkan tanpa membuat transaksi duplikat.'
+   : '';
+  message((err.message||'Transaksi gagal. Periksa data dan coba lagi.')+retryHint,'error');
+ }finally{
+  checkoutBusy=false;
+  checkoutButton.disabled=false;
+  checkoutButton.textContent=pendingCheckout?'Lanjutkan checkout / PDF':'Buat rental & pembayaran';
+ }
 });
-if(paymentError||!paymentId){
-message('Rental '+code+' berhasil dibuat, tetapi pembayaran gagal dicatat. Jangan checkout ulang; periksa menu Pembayaran. '+(paymentError?.message||'RPC tidak mengembalikan ID pembayaran.'),'error');
-return;
-}}created=made;
-try{
- await saveRentalAgreements(made,tenantSig,staffSig,{
-  name,phone,identity,duration,
-  staffName:profile?.full_name||user?.email||'Petugas'
- });
-}catch(pdfError){
- message('Rental dan pembayaran sudah tersimpan. PDF belum seluruhnya berhasil disimpan: '+pdfError.message+' Jangan checkout ulang. Periksa rental di RMS.','error');
- await load();selectedUnits=[];renderQuote();return;
-}
-message('Transaksi berhasil dibuat untuk '+made.length+' unit. Total '+money(quote)+'. PDF per rental berhasil disimpan. '+(method==='cash'?'Pembayaran tunai tercatat lunas.':'Pembayaran menunggu verifikasi dana masuk.'),'success');
-await load();selectedUnits=[];renderQuote();}catch(err){message(err.message||'Transaksi gagal. Periksa data dan coba lagi.','error');}finally{checkoutBusy=false;checkoutButton.disabled=false;checkoutButton.textContent='Buat rental & pembayaran';}});
 const {data:{session}}=await db.auth.getSession();if(session)await sessionChanged(session);
 </script></body></html>
