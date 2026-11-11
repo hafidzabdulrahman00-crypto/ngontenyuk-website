@@ -73,7 +73,7 @@
       </div>
       <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
       <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
-      <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><label id="cashReceivedWrap" class="hidden"><input type="checkbox" id="cashReceived"> Uang tunai sudah diterima sesuai nominal tagihan</label><p class="hint">Tunai hanya dicatat lunas setelah penerimaan dikonfirmasi. QRIS saat ini menunggu verifikasi manual; QR dinamis otomatis memerlukan integrasi payment gateway.</p></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
+      <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><label id="cashReceivedWrap" class="hidden"><input type="checkbox" id="cashReceived"> Uang tunai sudah diterima sesuai nominal tagihan</label><p class="hint">Tunai hanya dicatat lunas setelah penerimaan dikonfirmasi. QRIS tercatat menunggu verifikasi manual oleh Owner/Admin.</p><div id="rmsQrisPanel" class="hidden" style="margin-top:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff"><strong>QRIS resmi · Mas02 Education</strong><iframe title="QRIS Mas02 Education" src="https://drive.google.com/file/d/1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y/preview" style="display:block;width:min(100%,360px);height:440px;margin:10px auto;border:0;border-radius:10px;background:#fff" loading="lazy" allow="autoplay"></iframe><a href="https://drive.google.com/file/d/1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y/view?usp=share_link" target="_blank" rel="noopener noreferrer">Buka gambar QRIS di Google Drive</a><p class="hint">Pastikan nama merchant dan nominal sesuai. Status pembayaran tetap pending sampai dana masuk diverifikasi.</p></div></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
      </div>
      <div class="notice" id="rentalQuote">Pilih unit dan waktu sewa untuk melihat estimasi tarif.</div>
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
@@ -559,8 +559,10 @@ $('inventoryRows').addEventListener('change',async e=>{
 });
 $('paymentRental').addEventListener('change',updatePaymentQuote);
 $('rentalPosPaymentMethod').addEventListener('change',()=>{
- const cash=$('rentalPosPaymentMethod').value==='cash';
+ const method=$('rentalPosPaymentMethod').value;
+ const cash=method==='cash';
  $('cashReceivedWrap').classList.toggle('hidden',!cash);
+ $('rmsQrisPanel').classList.toggle('hidden',method!=='qris_manual');
  $('cashReceived').checked=false;
 });
 $('paymentRows').addEventListener('click',async e=>{
