@@ -46,7 +46,7 @@ body{background:radial-gradient(circle at 12% -10%,#eee6ff 0,transparent 35%),va
 </div>
 <div id="msg" class="notice hidden"></div>
 </section>
-</main><aside class="sticky"><section class="panel"><h3>Ringkasan transaksi</h3><div id="summary" class="receipt">Belum ada unit dipilih.</div><div class="quote"><div class="muted">TOTAL</div><div class="total" id="sideTotal">Rp0</div></div></section><section class="panel"><h3>Unit tersedia</h3><div id="unitList" class="list muted">Memuat…</div></section><section class="panel"><h3>Catatan operasional</h3><p class="hint">Jadwal bentrok dan kelayakan unit tetap divalidasi database. Jangan membuat transaksi ulang jika rental berhasil dibuat tetapi pencatatan pembayaran gagal.</p></section></aside></div></div>
+</main><aside class="sticky"><section class="panel"><h3>Ringkasan transaksi</h3><div id="summary" class="receipt">Belum ada unit dipilih.</div><div class="quote"><div class="muted">TOTAL</div><div class="total" id="sideTotal">Rp0</div></div></section><section class="panel"><h3>Unit tersedia</h3><div id="unitList" class="list muted">Memuat…</div></section><section class="panel"><h3>Catatan operasional</h3><p class="hint">Jadwal bentrok dan kelayakan unit tetap divalidasi database. Jangan membuat transaksi ulang jika rental berhasil dibuat tetapi pencatatan pembayaran gagal.</p></section></aside></div><section class="panel hidden" id="pendingAgreementPanel"><h2>Pemulihan PDF Perjanjian</h2><p class="muted">Rental yang sudah tersimpan tetapi PDF belum tercatat akan muncul di sini. Pemulihan tidak membuat rental atau pembayaran baru.</p><div id="pendingAgreementRows" class="list"></div></section></div>
 <section id="agreementPrint" class="hidden"></section></div>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
@@ -160,12 +160,52 @@ async function saveRentalAgreements(rows,tenantSig,staffSig,details){
   if(updateError)throw new Error('PDF rental '+rental.rental_code+' sudah terunggah, tetapi lokasi PDF gagal dicatat ke rental: '+updateError.message);
  }
 }
-async function load(){const [p,u,r]=await Promise.all([db.from('products').select('id,name,is_active').eq('is_active',true).order('name'),db.from('units').select('id,unit_code,product_id,condition,operational_status,products(name)').order('unit_code'),db.from('product_rates').select('product_id,duration_hours,price').eq('is_active',true)]);if(p.error)throw p.error;if(u.error)throw u.error;if(r.error)throw r.error;products=p.data||[];units=u.data||[];rates=r.data||[];const available=units.filter(activeUnit);$('unit').innerHTML='<option value="">Pilih unit…</option>'+available.map(u=>'<option value="'+u.id+'">'+esc(u.unit_code)+' · '+esc(u.products?.name)+'</option>').join('');$('unitList').innerHTML=available.map(u=>'<div class="unit"><div><b>'+esc(u.products?.name)+'</b><small>'+esc(u.unit_code)+'</small></div><span class="good">Tersedia</span></div>').join('')||'Tidak ada unit tersedia.';$('productGrid').innerHTML=products.map(p=>{const count=available.filter(u=>u.product_id===p.id).length;const first=rates.filter(x=>x.product_id===p.id).sort((a,b)=>a.duration_hours-b.duration_hours)[0];return '<div class="product"><strong>'+esc(p.name)+'</strong><small>'+count+' unit tersedia</small><div class="price">'+(first?money(first.price)+' / '+first.duration_hours+' jam':'Tarif belum diatur')+'</div><button class="btn secondary" type="button" data-product="'+p.id+'" '+(!count?'disabled':'')+'>Pilih produk</button></div>';}).join('');renderQuote();}
+async function loadPendingAgreements(){
+ const panel=$('pendingAgreementPanel');
+ const {data,error}=await db.from('rentals')
+  .select('id,rental_code,start_at,end_at,rental_price,unit_id,identity_document_type,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))')
+  .is('agreement_pdf_path',null)
+  .not('tenant_signature_data','is',null)
+  .not('staff_signature_data','is',null)
+  .order('created_at',{ascending:false})
+  .limit(30);
+ if(error)throw error;
+ const rows=data||[];
+ panel.classList.toggle('hidden',rows.length===0);
+ $('pendingAgreementRows').innerHTML=rows.map(r=>
+  '<div class="unit"><div><b>'+esc(r.rental_code)+'</b><small>'+esc(r.customers?.name)+' · '+esc(r.units?.unit_code)+' · '+money(r.rental_price)+'</small></div><button class="btn secondary" type="button" data-recover-pdf="'+esc(r.id)+'">Pulihkan PDF</button></div>'
+ ).join('');
+}
+async function recoverAgreementPdf(rentalId){
+ const {data:rental,error}=await db.from('rentals')
+  .select('id,rental_code,start_at,end_at,rental_price,unit_id,identity_document_type,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))')
+  .eq('id',rentalId).single();
+ if(error)throw error;
+ const duration=Math.round((new Date(rental.end_at)-new Date(rental.start_at))/3600000);
+ await saveRentalAgreements([rental],rental.tenant_signature_data,rental.staff_signature_data,{
+  name:rental.customers?.name||'Penyewa',
+  phone:rental.customers?.phone||'—',
+  identity:rental.identity_document_type||'KTP/KTM',
+  duration,
+  staffName:'Petugas NgontenYuk.co'
+ });
+ await loadPendingAgreements();
+ message('PDF untuk '+rental.rental_code+' berhasil dipulihkan tanpa membuat transaksi baru.','success');
+}
+async function load(){const [p,u,r]=await Promise.all([db.from('products').select('id,name,is_active').eq('is_active',true).order('name'),db.from('units').select('id,unit_code,product_id,condition,operational_status,products(name)').order('unit_code'),db.from('product_rates').select('product_id,duration_hours,price').eq('is_active',true)]);if(p.error)throw p.error;if(u.error)throw u.error;if(r.error)throw r.error;products=p.data||[];units=u.data||[];rates=r.data||[];const available=units.filter(activeUnit);$('unit').innerHTML='<option value="">Pilih unit…</option>'+available.map(u=>'<option value="'+u.id+'">'+esc(u.unit_code)+' · '+esc(u.products?.name)+'</option>').join('');$('unitList').innerHTML=available.map(u=>'<div class="unit"><div><b>'+esc(u.products?.name)+'</b><small>'+esc(u.unit_code)+'</small></div><span class="good">Tersedia</span></div>').join('')||'Tidak ada unit tersedia.';$('productGrid').innerHTML=products.map(p=>{const count=available.filter(u=>u.product_id===p.id).length;const first=rates.filter(x=>x.product_id===p.id).sort((a,b)=>a.duration_hours-b.duration_hours)[0];return '<div class="product"><strong>'+esc(p.name)+'</strong><small>'+count+' unit tersedia</small><div class="price">'+(first?money(first.price)+' / '+first.duration_hours+' jam':'Tarif belum diatur')+'</div><button class="btn secondary" type="button" data-product="'+p.id+'" '+(!count?'disabled':'')+'>Pilih produk</button></div>';}).join('');renderQuote();await loadPendingAgreements();}
 async function sessionChanged(session){user=session?.user||null;if(!user){$('login').classList.remove('hidden');$('workspace').classList.add('hidden');$('userBadge').textContent='Belum masuk';return;}const {data,error}=await db.from('profiles').select('full_name,role').eq('id',user.id).single();if(error)throw error;profile=data;if(!['owner','admin','staff'].includes(profile.role))throw new Error('Akses POS hanya untuk Staff, Admin, dan Owner.');$('userBadge').textContent=(profile.full_name||user.email)+' · '+profile.role;$('login').classList.add('hidden');$('workspace').classList.remove('hidden');await load();resizeSignatures();}
 db.auth.onAuthStateChange((_event,session)=>{queueMicrotask(()=>sessionChanged(session).catch(e=>message(e.message,'error')));});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){$('loginMsg').textContent=error.message;$('loginMsg').classList.remove('hidden');}});
 $('logout').addEventListener('click',()=>db.auth.signOut());
 $('refresh').addEventListener('click',()=>load().catch(e=>message(e.message,'error')));
+$('pendingAgreementRows').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-recover-pdf]');
+ if(!button)return;
+ button.disabled=true;button.textContent='Memulihkan…';
+ try{await recoverAgreementPdf(button.dataset.recoverPdf);}
+ catch(err){message('Pemulihan PDF gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');}
+ finally{button.disabled=false;button.textContent='Pulihkan PDF';}
+});
 $('productGrid').addEventListener('click',e=>{const b=e.target.closest('[data-product]');if(!b)return;const p=b.dataset.product;const unit=units.find(u=>u.product_id===p&&activeUnit(u));if(unit){$('unit').value=unit.id;addSelectedUnit();}});
 $('addUnit').addEventListener('click',addSelectedUnit);$('cartList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(b)removeCartUnit(b.dataset.remove);});
 $('duration').addEventListener('change',()=>{setEnd();renderQuote();});
