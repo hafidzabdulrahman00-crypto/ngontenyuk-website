@@ -130,7 +130,7 @@ begin
     update public.customers set name = v_name where id = v_customer_id;
   end if;
 
-  for v_item in select value from jsonb_array_elements(p_items)
+  for v_item in select value from jsonb_array_elements(p_items) order by value->>'unit_id'
   loop
     if nullif(v_item->>'unit_id', '') is null
        or nullif(v_item->>'start_at', '') is null
@@ -167,8 +167,9 @@ begin
 
     -- Recalculate price in the database; never trust a client-supplied amount.
     v_hours := ceil(extract(epoch from (v_end - v_start)) / 3600.0)::integer;
-    if v_hours < 1 then
-      raise exception 'Durasi rental tidak valid.';
+    if v_hours not in (4, 6, 12, 24)
+       or extract(epoch from (v_end - v_start)) <> v_hours * 3600 then
+      raise exception 'Durasi POS harus tepat 4, 6, 12, atau 24 jam.';
     end if;
     v_remaining := v_hours;
     v_price := 0;
