@@ -39,7 +39,8 @@ begin
     raise exception 'Nominal pembayaran harus lebih dari nol.';
   end if;
 
-  if p_payment_method not in ('cash', 'bank_transfer', 'qris_manual') then
+  if p_payment_method is null
+     or p_payment_method not in ('cash', 'bank_transfer', 'qris_manual') then
     raise exception 'Metode pembayaran POS tidak valid.';
   end if;
 
