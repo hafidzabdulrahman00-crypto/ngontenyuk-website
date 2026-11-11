@@ -316,10 +316,21 @@ $('checkout').addEventListener('click',async()=>{
   }
   renderQuote();
  }catch(err){
-  const retryHint=pendingCheckout
-   ? ' Data transaksi tetap tersimpan di halaman ini. Tekan tombol yang sama untuk melanjutkan tanpa membuat transaksi duplikat.'
-   : '';
-  message((err.message||'Transaksi gagal. Periksa data dan coba lagi.')+retryHint,'error');
+  // A Postgres SQLSTATE means the atomic RPC was rejected and rolled back.
+  // Clear only an uncommitted request; retain committed rentals for PDF recovery
+  // and retain unknown transport failures to avoid accidental duplicate rentals.
+  const databaseRejected=typeof err?.code==='string'&&/^[0-9A-Z]{5}$/.test(err.code);
+  if(pendingCheckout&&!pendingCheckout.rentals&&databaseRejected){
+   pendingCheckout=null;
+   message((err.message||'Transaksi ditolak database.')+' Tidak ada rental yang dibuat dari permintaan ini. Perbaiki unit atau jadwal, lalu checkout kembali.','error');
+  }else{
+   const retryHint=pendingCheckout
+    ? (pendingCheckout.rentals
+       ? ' Rental sudah dibuat. Tekan tombol yang sama untuk melanjutkan penyimpanan PDF tanpa membuat rental baru.'
+       : ' Hasil permintaan belum dapat dipastikan. Gunakan tombol yang sama agar sistem tidak membuat transaksi duplikat.')
+    : '';
+   message((err.message||'Transaksi gagal. Periksa data dan coba lagi.')+retryHint,'error');
+  }
  }finally{
   checkoutBusy=false;
   checkoutButton.disabled=false;
