@@ -76,7 +76,7 @@ begin
   end if;
   if exists (
     select 1
-    from jsonb_array_elements(p_items) item
+    from jsonb_array_elements(p_items) as items(item)
     group by item->>'unit_id'
     having count(*) > 1
   ) then
