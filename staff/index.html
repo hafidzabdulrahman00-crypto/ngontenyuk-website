@@ -374,13 +374,13 @@ async function recoverRmsAgreement(rentalId){
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,agreement_pdf_path,agreement_pdf_created_at,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
   const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;
   const canChange=(rentalStatusTransitions[x.status]||[]).length>0;
-  const canRecoverPdf=Boolean(x.tenant_signature_data&&x.staff_signature_data);
+  const canRecoverPdf=!x.agreement_pdf_path;
   const pdfAction=x.agreement_pdf_path
    ? '<button type="button" class="btn secondary" data-agreement-path="'+safe(x.agreement_pdf_path)+'">Buka PDF</button><br><span class="hint">'+(x.agreement_pdf_created_at?new Date(x.agreement_pdf_created_at).toLocaleString('id-ID'):'Tersimpan')+'</span>'
    : canRecoverPdf
