@@ -87,9 +87,9 @@ begin
 end;
 $function$;
 
-revoke all on function public.add_inventory_stock(uuid, integer, date, numeric, text, text[], text[])
+revoke all on function public.add_inventory_stock(uuid, integer, date, numeric, text, text[], text)
   from public, anon;
-grant execute on function public.add_inventory_stock(uuid, integer, date, numeric, text, text[], text[])
+grant execute on function public.add_inventory_stock(uuid, integer, date, numeric, text, text[], text)
   to authenticated;
 
 commit;
