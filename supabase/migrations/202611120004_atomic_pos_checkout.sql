@@ -74,6 +74,14 @@ begin
   if jsonb_array_length(p_items) < 1 or jsonb_array_length(p_items) > 20 then
     raise exception 'Checkout harus berisi 1 sampai 20 unit.';
   end if;
+  if exists (
+    select 1
+    from jsonb_array_elements(p_items) item
+    group by item->>'unit_id'
+    having count(*) > 1
+  ) then
+    raise exception 'Satu unit hanya boleh dimasukkan sekali dalam satu checkout.';
+  end if;
   if p_payment_method is null
      or p_payment_method not in ('cash', 'bank_transfer', 'qris_manual') then
     raise exception 'Metode pembayaran POS tidak valid.';
