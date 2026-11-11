@@ -8,6 +8,8 @@
 <style>
 :root{--ink:#28213b;--muted:#77718a;--purple:#7654c8;--purple2:#9275df;--line:#e9e3f4;--paper:#fff;--bg:#f7f4fc;--good:#198754;--bad:#c03952;--shadow:0 12px 34px #39245b12}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#eee6ff 0,transparent 32%),var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}.shell{max-width:1200px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:15px;background:linear-gradient(145deg,#9b80e7,#6745bb);display:grid;place-items:center;color:white;font-weight:800;box-shadow:0 8px 20px #7654c844}.brand h1{font-size:19px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:10px}.pill{border:1px solid var(--line);border-radius:99px;background:#ffffffb8;padding:8px 12px;color:var(--muted);font-size:12px}.btn{border:0;border-radius:12px;padding:11px 15px;background:var(--purple);color:#fff;font-weight:650;box-shadow:0 6px 15px #7654c82b}.btn:hover{background:#6543b7}.btn.secondary{background:#f0eafd;color:#5d43a3;box-shadow:none}.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none}.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px}.side,.panel,.stat,.login-card{background:#ffffffd9;border:1px solid #fff;border-radius:20px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}.side{padding:12px;height:max-content;position:sticky;top:18px}.nav{width:100%;text-align:left;border:0;background:transparent;padding:12px;border-radius:12px;color:#69617d;margin:2px 0;font-weight:600}.nav.active,.nav:hover{background:#f0eafd;color:#5d43a3}.nav small{display:block;font-weight:400;color:#9991aa;font-size:11px}.content{min-width:0}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:4px 0 18px}.page-head h2{font-size:25px;margin:0}.page-head p{color:var(--muted);margin:5px 0 0}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{padding:17px}.stat span{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:27px;margin-top:6px}.panel{padding:20px;margin-bottom:16px}.panel h3{margin:0 0 14px;font-size:16px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:560px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted);font-weight:650;background:#faf8fd}td{color:#443d55}.tag{display:inline-block;padding:4px 8px;border-radius:99px;background:#f0eafd;color:#674bb0;font-size:11px}.tag.green{background:#e7f6ee;color:#167747}.tag.orange{background:#fff2df;color:#a6630c}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:#665d78;font-weight:650}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 12px;color:var(--ink);outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:#a58ce5;box-shadow:0 0 0 3px #9275df20}.checks{display:flex;gap:16px;flex-wrap:wrap;padding:8px 0}.status-select{margin-top:5px;max-width:160px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 9px;color:var(--ink);font-size:12px}.status-select:disabled{opacity:.7}.checks label{font-size:13px;color:#5c536e;font-weight:500}.hint{font-size:12px;color:var(--muted);margin:4px 0 0}.actions{display:flex;gap:9px;align-items:center;margin-top:16px}.notice{padding:12px 14px;border-radius:12px;background:#f0eafd;color:#5d43a3;font-size:13px;margin:12px 0}.notice.error{background:#fff0f1;color:var(--bad)}.notice.success{background:#eaf7ef;color:var(--good)}.hidden{display:none!important}.login{min-height:80vh;display:grid;place-items:center}.login-card{width:min(420px,100%);padding:28px}.login-card h2{margin:0 0 5px}.login-card p{color:var(--muted);margin:0 0 20px}.login-card .field{margin:13px 0}.empty{color:var(--muted);padding:22px;text-align:center}.foot{color:#9891a6;text-align:center;font-size:11px;padding:20px}
+.signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.signature-card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}.signature-card b{font-size:13px}.signature-card canvas{display:block;width:100%;height:140px;border:1px dashed #b9acd4;border-radius:10px;background:#fff;touch-action:none;cursor:crosshair}.signature-card button{align-self:flex-start;padding:7px 11px;font-size:12px}
+@media(max-width:560px){.signature-grid{grid-template-columns:1fr}}
 @media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:4px}.nav{white-space:nowrap;width:auto;flex:0 0 auto}.nav small{display:none}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.shell{padding:14px}.top{align-items:flex-start}.top-actions{flex-direction:column;align-items:flex-end}.pill{display:none}.page-head h2{font-size:21px}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:23px}.panel{padding:15px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
 </style>
@@ -62,6 +64,13 @@
       <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
       <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
       <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas asli (KTP/KTM/identitas lain) telah diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Identitas hanya diperlihatkan untuk dicocokkan, tidak ditahan, tidak difoto, dan nomor NIK tidak disimpan di database.</p></div>
+      <div class="field full"><label>Tanda tangan digital untuk surat perjanjian</label>
+       <div class="signature-grid">
+        <div class="signature-card"><b>Tanda tangan penyewa</b><canvas id="rmsTenantSignature" aria-label="Area tanda tangan penyewa"></canvas><button class="btn ghost" type="button" data-clear-rms-signature="rmsTenantSignature">Bersihkan</button></div>
+        <div class="signature-card"><b>Tanda tangan petugas</b><canvas id="rmsStaffSignature" aria-label="Area tanda tangan petugas"></canvas><button class="btn ghost" type="button" data-clear-rms-signature="rmsStaffSignature">Bersihkan</button></div>
+       </div>
+       <p class="hint">Kedua pihak menandatangani langsung menggunakan stylus atau jari. Tanda tangan disimpan bersama PDF perjanjian di Storage privat.</p>
+      </div>
       <div class="field"><label for="rentalStart">Mulai sewa</label><input id="rentalStart" type="datetime-local" required></div>
       <div class="field"><label for="rentalEnd">Selesai sewa</label><input id="rentalEnd" type="datetime-local" required></div>
       <div class="field owner-only"><label for="rentalPosPaymentMethod">Metode pembayaran COD</label><select id="rentalPosPaymentMethod"><option value="">Pilih metode…</option><option value="cash">Tunai</option><option value="qris_manual">QRIS</option></select><label id="cashReceivedWrap" class="hidden"><input type="checkbox" id="cashReceived"> Uang tunai sudah diterima sesuai nominal tagihan</label><p class="hint">Tunai hanya dicatat lunas setelah penerimaan dikonfirmasi. QRIS saat ini menunggu verifikasi manual; QR dinamis otomatis memerlukan integrasi payment gateway.</p></div><div class="field"><label for="rentalNotes">Catatan (opsional)</label><textarea id="rentalNotes" rows="2" placeholder="Catatan transaksi atau kebutuhan pelanggan"></textarea></div>
@@ -148,6 +157,7 @@
 </div>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { jsPDF } from 'https://esm.sh/jspdf@2.5.2';
 const SUPABASE_URL = 'https://tyuylxmourtnajdireuc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -266,16 +276,116 @@ function rentalStatusOptions(status,requirementsComplete){
  const options=[status,...next];
  return options.map(value=>'<option value="'+safe(value)+'" '+(value===status?'selected':'')+'>'+safe(rentalStatusLabels[value]||value)+'</option>').join('');
 }
+const rmsSignatureCanvases = {};
+function initRmsSignature(id){
+ const canvas=$(id),ctx=canvas.getContext('2d');
+ const resize=()=>{
+  const rect=canvas.getBoundingClientRect(),dpr=Math.max(1,window.devicePixelRatio||1);
+  const old=canvas.dataset.ink==='1'?canvas.toDataURL('image/png'):null;
+  canvas.width=Math.max(1,Math.round(rect.width*dpr));
+  canvas.height=Math.max(1,Math.round(rect.height*dpr));
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(old){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=old;}
+ };
+ resize();
+ let drawing=false,ink=false;
+ const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};};
+ canvas.addEventListener('pointerdown',e=>{drawing=true;ink=true;canvas.dataset.ink='1';canvas.setPointerCapture(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
+ canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=point(e);ctx.lineWidth=Math.max(2,canvas.width/360);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#211b2d';ctx.lineTo(p.x,p.y);ctx.stroke();});
+ const stop=()=>drawing=false;
+ canvas.addEventListener('pointerup',stop);canvas.addEventListener('pointercancel',stop);canvas.addEventListener('pointerleave',stop);
+ rmsSignatureCanvases[id]={canvas,ctx,resize};
+}
+function rmsSignatureData(id){
+ const canvas=$(id);
+ if(canvas.dataset.ink!=='1')return null;
+ const scale=Math.min(1,900/canvas.width,320/canvas.height);
+ const out=document.createElement('canvas');
+ out.width=Math.max(1,Math.round(canvas.width*scale));out.height=Math.max(1,Math.round(canvas.height*scale));
+ const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);ctx.drawImage(canvas,0,0,out.width,out.height);
+ return out.toDataURL('image/jpeg',0.55);
+}
+function clearRmsSignature(id){
+ const c=$(id),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);c.dataset.ink='0';
+}
+function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
+ const doc=new jsPDF({unit:'mm',format:'a4'}),w=doc.internal.pageSize.getWidth(),left=16,right=w-16;
+ let y=18;
+ const line=(label,value)=>{const lines=doc.splitTextToSize(label+': '+String(value??'—'),w-32);doc.text(lines,left,y);y+=lines.length*6+2;};
+ const fmt=v=>new Date(v).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'});
+ doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('NGONTENYUK.CO',w/2,y,{align:'center'});y+=9;
+ doc.setFontSize(13);doc.text('SURAT PERJANJIAN SEWA MICROPHONE',w/2,y,{align:'center'});y+=11;
+ doc.setFont('helvetica','normal');doc.setFontSize(10);
+ line('Kode rental',rental.rental_code);line('Nama penyewa',details.name);line('Nomor WhatsApp',details.phone);
+ line('Produk',details.productName);line('Kode unit',details.unitCode);
+ line('Mulai sewa',fmt(rental.start_at));line('Selesai sewa',fmt(rental.end_at));
+ line('Durasi',details.duration+' jam');line('Harga sewa',rupiah(rental.rental_price));
+ line('Verifikasi identitas','Identitas asli diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan');
+ y+=3;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('KETENTUAN PENYEWAAN',left,y);y+=7;
+ doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+ const terms=[
+  '1. Penyewa bertanggung jawab menjaga unit microphone dan seluruh kelengkapannya selama masa sewa.',
+  '2. Unit dikembalikan pada waktu dan tempat yang telah disepakati.',
+  '3. Kondisi serta kelengkapan unit diperiksa bersama saat pengembalian.',
+  '4. Penanganan keterlambatan atau kerusakan mengikuti ketentuan sewa yang telah dijelaskan dan disetujui para pihak.',
+  '5. Dokumen identitas asli hanya diperlihatkan untuk verifikasi dan langsung dikembalikan; dokumen tidak ditahan atau difoto.',
+  '6. Kedua pihak menyatakan telah membaca dan menyetujui ketentuan penyewaan ini.'
+ ];
+ for(const term of terms){const lines=doc.splitTextToSize(term,w-32);if(y+lines.length*4.5>245){doc.addPage();y=20;}doc.text(lines,left,y);y+=lines.length*4.5+3;}
+ if(y>225){doc.addPage();y=20;}y+=5;doc.setFont('helvetica','normal');doc.setFontSize(10);
+ doc.text('Ditandatangani secara elektronik sederhana oleh:',left,y);y+=7;
+ doc.text('Penyewa',left+8,y);doc.text('Petugas NgontenYuk.co',right-8,y,{align:'right'});y+=3;
+ doc.addImage(tenantSig,'JPEG',left+2,y,65,28);doc.addImage(staffSig,'JPEG',right-67,y,65,28);y+=34;
+ doc.text(details.name,left+8,y);doc.text(details.staffName,right-8,y,{align:'right'});y+=9;
+ doc.setFontSize(8);doc.text('Waktu pembuatan dokumen: '+new Date().toLocaleString('id-ID'),left,y);
+ return doc.output('blob');
+}
+async function saveRmsAgreement(rental,tenantSig,staffSig,details){
+ const {error:signatureError}=await db.from('rentals').update({
+  tenant_signature_data:tenantSig,
+  staff_signature_data:staffSig,
+  agreement_signed:true,
+  agreement_signed_at:new Date().toISOString()
+ }).eq('id',rental.id);
+ if(signatureError)throw new Error('Rental tersimpan, tetapi tanda tangan gagal dicatat: '+signatureError.message);
+ const unit=unitsCache.find(x=>x.id===rental.unit_id);
+ const productName=unit?.products?.name||'Microphone';
+ const blob=makeRmsAgreementPdf({...rental,unitCode:unit?.unit_code||'—'},tenantSig,staffSig,{...details,productName});
+ const path=rental.id+'/agreement-'+rental.id+'.pdf';
+ const {error:uploadError}=await db.storage.from('rental-agreements').upload(path,blob,{contentType:'application/pdf',upsert:true});
+ if(uploadError)throw new Error('Tanda tangan tersimpan, tetapi PDF gagal diunggah: '+uploadError.message);
+ const {error:pathError}=await db.from('rentals').update({agreement_pdf_path:path,agreement_pdf_created_at:new Date().toISOString()}).eq('id',rental.id);
+ if(pathError)throw new Error('PDF terunggah, tetapi path gagal dicatat: '+pathError.message);
+}
+async function recoverRmsAgreement(rentalId){
+ const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,unit_id,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
+ if(error)throw error;
+ if(!rental.tenant_signature_data||!rental.staff_signature_data)throw new Error('Tanda tangan kedua pihak belum tersimpan. PDF tidak dapat dibuat dengan tanda tangan kosong.');
+ const duration=Math.round((new Date(rental.end_at)-new Date(rental.start_at))/3600000);
+ const blob=makeRmsAgreementPdf({...rental,unitCode:rental.units?.unit_code||'—'},rental.tenant_signature_data,rental.staff_signature_data,{
+  name:rental.customers?.name||'Penyewa',phone:rental.customers?.phone||'—',
+  productName:rental.units?.products?.name||'Microphone',duration,staffName:currentProfile?.full_name||'Petugas NgontenYuk.co'
+ });
+ const path=rental.id+'/agreement-'+rental.id+'.pdf';
+ const {error:uploadError}=await db.storage.from('rental-agreements').upload(path,blob,{contentType:'application/pdf',upsert:true});
+ if(uploadError)throw uploadError;
+ const {error:pathError}=await db.from('rentals').update({agreement_pdf_path:path,agreement_pdf_created_at:new Date().toISOString()}).eq('id',rental.id);
+ if(pathError)throw pathError;
+ await loadRentals();
+}
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,agreement_pdf_path,agreement_pdf_created_at,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
   const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;
   const canChange=(rentalStatusTransitions[x.status]||[]).length>0;
+  const canRecoverPdf=Boolean(x.tenant_signature_data&&x.staff_signature_data);
   const pdfAction=x.agreement_pdf_path
    ? '<button type="button" class="btn secondary" data-agreement-path="'+safe(x.agreement_pdf_path)+'">Buka PDF</button><br><span class="hint">'+(x.agreement_pdf_created_at?new Date(x.agreement_pdf_created_at).toLocaleString('id-ID'):'Tersimpan')+'</span>'
-   : '<span class="hint">Belum tersedia</span>';
+   : canRecoverPdf
+    ? '<button type="button" class="btn secondary" data-rms-recover-pdf="'+safe(x.id)+'">Pulihkan PDF</button>'
+    : '<span class="hint">Tanda tangan belum lengkap</span>';
   return '<tr>'+
    '<td><b>'+safe(x.rental_code)+'</b></td>'+
    '<td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td>'+
@@ -561,6 +671,14 @@ $('rentalRows').addEventListener('click',async e=>{
   button.disabled=false;button.textContent='Buka PDF';
  }
 });
+$('rentalRows').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-rms-recover-pdf]');
+ if(!button)return;
+ button.disabled=true;button.textContent='Memulihkan…';
+ try{await recoverRmsAgreement(button.dataset.rmsRecoverPdf);showMsg('globalMsg','PDF perjanjian berhasil dipulihkan.','success');}
+ catch(err){showMsg('globalMsg','Pemulihan PDF gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');}
+ finally{button.disabled=false;button.textContent='Pulihkan PDF';}
+});
 $('rentalRows').addEventListener('change',async e=>{
  const input=e.target;
  if(input instanceof HTMLInputElement&&input.type==='checkbox'){
@@ -596,6 +714,9 @@ document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>
  $('page-'+btn.dataset.page).classList.remove('hidden');
 }));
 
+document.querySelectorAll('[data-clear-rms-signature]').forEach(button=>button.addEventListener('click',()=>clearRmsSignature(button.dataset.clearRmsSignature)));
+initRmsSignature('rmsTenantSignature');initRmsSignature('rmsStaffSignature');
+
 $('rentalForm').addEventListener('submit',async e=>{
  e.preventDefault();
  if(rentalSubmitting)return;
@@ -614,6 +735,8 @@ $('rentalForm').addEventListener('submit',async e=>{
    const duration=(endDate-startDate)/3600000;
    if(!unit||unit.operational_status!=='available'||unit.condition==='damaged'||unit.products?.is_active===false)throw new Error('Unit tidak tersedia, produk nonaktif, atau kondisinya rusak. Muat ulang data dan pilih unit lain.');
    const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
+   const tenantSig=rmsSignatureData('rmsTenantSignature'),staffSig=rmsSignatureData('rmsStaffSignature');
+   if(!tenantSig||!staffSig)throw new Error('Kedua tanda tangan wajib diisi sebelum rental dibuat.');
    if(!requirementsComplete)throw new Error('Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.');
    const isCashier=['owner','admin'].includes(currentProfile?.role);
    const paymentMethod=isCashier?$('rentalPosPaymentMethod').value:null;
@@ -638,6 +761,8 @@ $('rentalForm').addEventListener('submit',async e=>{
    pendingRmsRequest={
     requestId:crypto.randomUUID(),
     paymentMethod,
+    tenantSig,staffSig,
+    details:{name:customerName,phone:customerPhone,duration:Math.round(duration),staffName:currentProfile?.full_name||currentUser?.email||'Petugas NgontenYuk.co'},
     args:{
      p_request_id:null,
      p_customer_name:customerName,
@@ -668,14 +793,16 @@ $('rentalForm').addEventListener('submit',async e=>{
   if(!data?.id||!data?.rental_code)throw new Error('RPC tidak mengembalikan kode rental. Jangan kirim permintaan baru; muat ulang daftar rental terlebih dahulu.');
 
   const completed=pendingRmsRequest;
+  await saveRmsAgreement(data,completed.tenantSig,completed.staffSig,completed.details);
   pendingRmsRequest=null;
   let paymentNotice='';
   if(completed.paymentMethod==='cash')paymentNotice=' Pembayaran tunai '+rupiah(data.rental_price)+' tercatat lunas.';
   else if(completed.paymentMethod==='qris_manual')paymentNotice=' Tagihan QRIS '+rupiah(data.rental_price)+' tercatat menunggu verifikasi dana masuk.';
   const verifiedCount=3;
   const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';
-  showMsg('rentalMsg','Penyewaan '+data.rental_code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.'+paymentNotice,'success');
+  showMsg('rentalMsg','Penyewaan '+data.rental_code+' berhasil dibuat. '+verificationLabel+'. PDF perjanjian dan tanda tangan berhasil disimpan. Status jadwal: reserved.'+paymentNotice,'success');
   $('rentalForm').reset();
+  clearRmsSignature('rmsTenantSignature');clearRmsSignature('rmsStaffSignature');
   $('rentalPosPaymentMethod').value='';
   $('cashReceivedWrap').classList.add('hidden');
   $('cashReceived').checked=false;
