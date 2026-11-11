@@ -357,12 +357,21 @@ async function saveRmsAgreement(rental,tenantSig,staffSig,details){
  const {error:pathError}=await db.from('rentals').update({agreement_pdf_path:path,agreement_pdf_created_at:new Date().toISOString()}).eq('id',rental.id);
  if(pathError)throw new Error('PDF terunggah, tetapi path gagal dicatat: '+pathError.message);
 }
-async function recoverRmsAgreement(rentalId){
+async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaffSig=null){
  const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,unit_id,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
  if(error)throw error;
- if(!rental.tenant_signature_data||!rental.staff_signature_data)throw new Error('Tanda tangan kedua pihak belum tersimpan. PDF tidak dapat dibuat dengan tanda tangan kosong.');
+ const tenantSig=rental.tenant_signature_data||suppliedTenantSig;
+ const staffSig=rental.staff_signature_data||suppliedStaffSig;
+ if(!tenantSig||!staffSig)throw new Error('Tanda tangan pada rental ini belum tersedia. Isi kedua area tanda tangan di formulir RMS dengan tanda tangan para pihak yang sebenarnya, lalu klik Pulihkan PDF kembali.');
+ if(!rental.tenant_signature_data||!rental.staff_signature_data){
+  const {error:signatureError}=await db.from('rentals').update({
+   tenant_signature_data:tenantSig,staff_signature_data:staffSig,
+   agreement_signed:true,agreement_signed_at:new Date().toISOString()
+  }).eq('id',rental.id);
+  if(signatureError)throw signatureError;
+ }
  const duration=Math.round((new Date(rental.end_at)-new Date(rental.start_at))/3600000);
- const blob=makeRmsAgreementPdf({...rental,unitCode:rental.units?.unit_code||'—'},rental.tenant_signature_data,rental.staff_signature_data,{
+ const blob=makeRmsAgreementPdf({...rental,unitCode:rental.units?.unit_code||'—'},tenantSig,staffSig,{
   name:rental.customers?.name||'Penyewa',phone:rental.customers?.phone||'—',
   productName:rental.units?.products?.name||'Microphone',duration,staffName:currentProfile?.full_name||'Petugas NgontenYuk.co'
  });
@@ -675,7 +684,11 @@ $('rentalRows').addEventListener('click',async e=>{
  const button=e.target.closest('[data-rms-recover-pdf]');
  if(!button)return;
  button.disabled=true;button.textContent='Memulihkan…';
- try{await recoverRmsAgreement(button.dataset.rmsRecoverPdf);showMsg('globalMsg','PDF perjanjian berhasil dipulihkan.','success');}
+ try{
+  const tenantSig=rmsSignatureData('rmsTenantSignature'),staffSig=rmsSignatureData('rmsStaffSignature');
+  await recoverRmsAgreement(button.dataset.rmsRecoverPdf,tenantSig,staffSig);
+  showMsg('globalMsg','PDF perjanjian berhasil dipulihkan.','success');
+ }
  catch(err){showMsg('globalMsg','Pemulihan PDF gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');}
  finally{button.disabled=false;button.textContent='Pulihkan PDF';}
 });
