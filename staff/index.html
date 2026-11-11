@@ -712,6 +712,7 @@ document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>
  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
  $('page-'+btn.dataset.page).classList.remove('hidden');
+ if(btn.dataset.page==='rentals')Object.values(rmsSignatureCanvases).forEach(x=>x.resize());
 }));
 
 document.querySelectorAll('[data-clear-rms-signature]').forEach(button=>button.addEventListener('click',()=>clearRmsSignature(button.dataset.clearRmsSignature)));
