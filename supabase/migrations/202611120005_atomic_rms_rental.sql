@@ -171,6 +171,12 @@ begin
      or v_unit.condition not in ('new', 'good', 'fair') then
     raise exception 'Unit tidak memenuhi syarat untuk disewakan.';
   end if;
+  if not exists (
+    select 1 from public.products p
+    where p.id = v_unit.product_id and p.is_active = true
+  ) then
+    raise exception 'Produk untuk unit ini sudah tidak aktif.';
+  end if;
 
   -- Match the RMS price rule: full 24-hour blocks plus the smallest
   -- active package that covers the remaining rounded-up hours.
