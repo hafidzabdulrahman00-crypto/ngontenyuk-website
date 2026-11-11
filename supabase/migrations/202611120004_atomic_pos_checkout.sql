@@ -68,9 +68,10 @@ begin
   if v_phone is null or v_phone !~ '^[+0-9][0-9+() .-]{7,28}$' then
     raise exception 'Nomor WhatsApp pelanggan tidak valid.';
   end if;
-  if jsonb_typeof(p_items) <> 'array'
-     or jsonb_array_length(p_items) < 1
-     or jsonb_array_length(p_items) > 20 then
+  if p_items is null or jsonb_typeof(p_items) is distinct from 'array' then
+    raise exception 'Format item checkout tidak valid.';
+  end if;
+  if jsonb_array_length(p_items) < 1 or jsonb_array_length(p_items) > 20 then
     raise exception 'Checkout harus berisi 1 sampai 20 unit.';
   end if;
   if p_payment_method is null
@@ -134,7 +135,7 @@ begin
     if nullif(v_item->>'unit_id', '') is null
        or nullif(v_item->>'start_at', '') is null
        or nullif(v_item->>'end_at', '') is null
-       or nullif(v_item->>'identity_document_type', '') not in ('KTP','KTM')
+       or coalesce(nullif(v_item->>'identity_document_type', ''), '') not in ('KTP','KTM')
        or nullif(v_item->>'tenant_signature_data', '') is null
        or nullif(v_item->>'staff_signature_data', '') is null then
       raise exception 'Data unit, jadwal, identitas, dan kedua tanda tangan wajib lengkap.';
