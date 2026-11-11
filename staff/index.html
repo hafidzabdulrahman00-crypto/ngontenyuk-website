@@ -196,7 +196,7 @@ async function loadProfile(user,token){
 async function loadData(token=sessionRenderToken){
  const [p,u,r]=await Promise.all([
   db.from('products').select('id,name,brand,unit_prefix,connectors,is_active').order('name'),
-  db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name)').order('created_at',{ascending:false}),
+  db.from('units').select('id,unit_code,product_id,connectors,condition,operational_status,notes,created_at,products(name,is_active)').order('created_at',{ascending:false}),
   db.from('product_rates').select('product_id,duration_hours,price').eq('is_active',true)
  ]);
  if(p.error) throw p.error;if(u.error) throw u.error;if(r.error) throw r.error;
@@ -204,13 +204,13 @@ async function loadData(token=sessionRenderToken){
  productsCache=p.data||[];unitsCache=u.data||[];ratesCache=r.data||[];
  $('statProducts').textContent=productsCache.filter(x=>x.is_active).length;
  $('statUnits').textContent=unitsCache.length;
- $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged').length;
+ $('statAvailable').textContent=unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged'&&x.products?.is_active!==false).length;
  $('statMaintenance').textContent=unitsCache.filter(x=>x.operational_status==='maintenance').length;
  const rows=unitsCache.slice(0,8).map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td>'+safe(label[x.condition]||x.condition)+'</td><td>'+statusTag(x.operational_status)+'</td></tr>').join('')||'<tr><td colspan="5" class="empty">Belum ada unit.</td></tr>';
  $('recentRows').innerHTML=rows;
  $('inventoryRows').innerHTML=unitsCache.map(x=>'<tr><td><b>'+safe(x.unit_code)+'</b></td><td>'+safe(x.products?.name)+'</td><td>'+connectors(x.connectors)+'</td><td><select class="status-select" data-unit-status="'+safe(x.id)+'" aria-label="Status '+safe(x.unit_code)+'">'+unitStatusOptions(x.operational_status,x.condition)+'</select></td><td><select class="status-select" data-unit-condition="'+safe(x.id)+'" aria-label="Kondisi '+safe(x.unit_code)+'">'+unitConditionOptions(x.condition)+'</select></td><td>'+safe(x.notes||'—')+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada unit.</td></tr>';
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>'+productsCache.filter(x=>x.is_active).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+' · '+safe(x.unit_prefix)+'</option>').join('');
- $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged').map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
+ $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>'+unitsCache.filter(x=>x.operational_status==='available'&&x.condition!=='damaged'&&x.products?.is_active!==false).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.unit_code)+' · '+safe(x.products?.name)+'</option>').join('');
  await loadRentals(token);
  await loadPayments(token);
 }
@@ -612,7 +612,7 @@ $('rentalForm').addEventListener('submit',async e=>{
    const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
    const startDate=new Date(startValue),endDate=new Date(endValue);
    const duration=(endDate-startDate)/3600000;
-   if(!unit||unit.operational_status!=='available'||unit.condition==='damaged')throw new Error('Unit tidak tersedia atau kondisinya rusak. Muat ulang data dan pilih unit lain.');
+   if(!unit||unit.operational_status!=='available'||unit.condition==='damaged'||unit.products?.is_active===false)throw new Error('Unit tidak tersedia, produk nonaktif, atau kondisinya rusak. Muat ulang data dan pilih unit lain.');
    const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
    if(!requirementsComplete)throw new Error('Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.');
    const isCashier=['owner','admin'].includes(currentProfile?.role);
