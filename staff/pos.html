@@ -307,7 +307,11 @@ $('checkout').addEventListener('click',async()=>{
    'success'
   );
   selectedUnits=[];
-  await load();
+  try{
+   await load();
+  }catch(refreshError){
+   message('Transaksi dan seluruh PDF sudah berhasil tersimpan. Penyegaran tampilan gagal: '+(refreshError.message||'Kesalahan tidak diketahui.')+'. Jangan membuat transaksi ulang; gunakan tombol Muat ulang.','success');
+  }
   renderQuote();
  }catch(err){
   const retryHint=pendingCheckout
