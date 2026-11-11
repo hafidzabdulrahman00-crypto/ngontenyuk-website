@@ -153,7 +153,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], paymentsCache = [], sessionRenderToken = 0;
-let rentalSubmitting = false;
+let rentalSubmitting = false, pendingRmsRequest = null;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
 function clearMsg(id){$(id).classList.add('hidden');}
@@ -602,66 +602,98 @@ $('rentalForm').addEventListener('submit',async e=>{
  rentalSubmitting=true;
  const submitButton=$('rentalForm').querySelector('button[type="submit"]');
  const originalButtonText=submitButton.textContent;
- submitButton.disabled=true;submitButton.textContent='Menyimpan…';
+ submitButton.disabled=true;
+ submitButton.textContent=pendingRmsRequest?'Melanjutkan penyimpanan…':'Menyimpan…';
  try{
- clearMsg('rentalMsg');
- if(!currentUser||!currentProfile){showMsg('rentalMsg','Sesi login belum siap. Silakan muat ulang halaman.','error');return;}
- const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
- const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
- const startDate=new Date(startValue),endDate=new Date(endValue);
- const duration=(endDate-startDate)/3600000;
- if(!unit||unit.operational_status!=='available'||unit.condition==='damaged'){showMsg('rentalMsg','Unit tidak tersedia atau kondisinya rusak. Muat ulang data dan pilih unit lain.','error');return;}
- const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
- if(!requirementsComplete){showMsg('rentalMsg','Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.','error');return;}
- const isCashier=['owner','admin'].includes(currentProfile?.role);
- const posPaymentMethod=isCashier?$('rentalPosPaymentMethod').value:null;
- if(isCashier&&!['cash','qris_manual'].includes(posPaymentMethod)){showMsg('rentalMsg','Pilih metode pembayaran Tunai atau QRIS.','error');return;}
- if(isCashier&&posPaymentMethod==='cash'&&!$('cashReceived').checked){showMsg('rentalMsg','Konfirmasi bahwa uang tunai sudah benar-benar diterima sebelum menyimpan pembayaran lunas.','error');return;}
- if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0){showMsg('rentalMsg','Periksa tanggal dan waktu penyewaan.','error');return;}
- if(duration<4){showMsg('rentalMsg','Durasi minimum penyewaan adalah 4 jam.','error');return;}
- if(startDate.getTime()<Date.now()-60000){showMsg('rentalMsg','Waktu mulai tidak boleh berada di masa lalu.','error');return;}
- const quote=rentalPrice(unit.product_id,duration);
- if(!quote){showMsg('rentalMsg','Tarif produk belum lengkap. Lengkapi paket tarif terlebih dahulu.','error');return;}
- const startISO=startDate.toISOString(),endISO=endDate.toISOString();
- const {data:conflicts,error:conflictError}=await db.from('rentals').select('id').eq('unit_id',unit.id).in('status',['reserved','confirmed','ongoing']).lt('start_at',endISO).gt('end_at',startISO).limit(1);
- if(conflictError){showMsg('rentalMsg','Gagal memeriksa jadwal unit: '+conflictError.message,'error');return;}
- if(conflicts?.length){showMsg('rentalMsg','Unit sudah memiliki jadwal penyewaan yang bertabrakan. Pilih waktu atau unit lain.','error');return;}
- const customerName=$('rentalCustomerName').value.trim(),customerPhone=$('rentalCustomerPhone').value.trim();
- if(!/^[+0-9][0-9+() .-]{7,28}$/.test(customerPhone)){showMsg('rentalMsg','Masukkan nomor WhatsApp yang valid.','error');return;}
- // Gunakan data pelanggan yang sudah ada berdasarkan nomor WhatsApp agar tidak membuat duplikat.
- const {data:existingCustomers,error:customerLookupError}=await db.from('customers').select('id').eq('phone',customerPhone).limit(1);
- if(customerLookupError){showMsg('rentalMsg','Gagal memeriksa data pelanggan: '+customerLookupError.message,'error');return;}
- let customer=existingCustomers?.[0]||null;
- if(!customer){
-  const {data:createdCustomer,error:customerError}=await db.from('customers').insert({name:customerName,phone:customerPhone}).select('id').single();
-  if(customerError){showMsg('rentalMsg','Gagal menyimpan data pelanggan: '+customerError.message,'error');return;}
-  customer=createdCustomer;
- }
- const code='NY-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
- const payload={rental_code:code,customer_id:customer.id,unit_id:unit.id,start_at:startISO,end_at:endISO,rental_price:quote.total,deposit_amount:0,identity_verified:$('rentalIdentity').checked,agreement_signed:$('rentalAgreement').checked,guarantee_explained:$('rentalGuarantee').checked,status:'reserved',notes:$('rentalNotes').value.trim()||null};
- const {data:createdRental,error:rentalError}=await db.from('rentals').insert(payload).select('id').single();
- if(rentalError){const overlap=rentalError.code==='23P01'||/jadwal unit sudah bertabrakan/i.test(rentalError.message||'');const ineligible=rentalError.code==='23514'||/tidak memenuhi syarat untuk disewakan/i.test(rentalError.message||'');const friendly=overlap?'Penyewaan tidak dapat dibuat karena jadwal unit bertabrakan dengan rental aktif lain. Pilih waktu atau unit berbeda.':ineligible?'Unit tidak memenuhi syarat untuk disewakan. Periksa kembali status operasional dan kondisi unit.':'Data pelanggan tersimpan, tetapi penyewaan gagal disimpan: '+rentalError.message+'. Periksa jadwal dan coba lagi.';showMsg('rentalMsg',friendly,'error');return;}
- let paymentNotice='';
- if(isCashier){
-  const {data:createdPayment,error:paymentError}=await db.from('payments').insert({rental_id:createdRental.id,amount:quote.total,payment_type:'rental',payment_method:posPaymentMethod,payment_status:'pending'}).select('id').single();
-  if(paymentError){showMsg('rentalMsg','Rental '+code+' berhasil dibuat, tetapi pencatatan pembayaran gagal: '+paymentError.message+'. Jangan buat rental ulang; catat pembayaran dari menu Pembayaran.','error');await refresh();return;}
-  if(posPaymentMethod==='cash'){
-   const {error:paidError}=await db.from('payments').update({payment_status:'paid'}).eq('id',createdPayment.id).eq('payment_status','pending');
-   if(paidError){paymentNotice=' Pembayaran tunai tersimpan tetapi belum berhasil ditandai lunas. Konfirmasi dari menu Pembayaran setelah memastikan uang diterima.';}
-   else{paymentNotice=' Pembayaran tunai '+rupiah(quote.total)+' tercatat lunas.';}
+  clearMsg('rentalMsg');
+  if(!pendingRmsRequest){
+   if(!currentUser||!currentProfile)throw new Error('Sesi login belum siap. Silakan muat ulang halaman.');
+   const unit=unitsCache.find(x=>x.id===$('rentalUnit').value);
+   const startValue=$('rentalStart').value,endValue=$('rentalEnd').value;
+   const startDate=new Date(startValue),endDate=new Date(endValue);
+   const duration=(endDate-startDate)/3600000;
+   if(!unit||unit.operational_status!=='available'||unit.condition==='damaged')throw new Error('Unit tidak tersedia atau kondisinya rusak. Muat ulang data dan pilih unit lain.');
+   const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
+   if(!requirementsComplete)throw new Error('Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.');
+   const isCashier=['owner','admin'].includes(currentProfile?.role);
+   const paymentMethod=isCashier?$('rentalPosPaymentMethod').value:null;
+   if(isCashier&&!['cash','qris_manual'].includes(paymentMethod))throw new Error('Pilih metode pembayaran Tunai atau QRIS.');
+   if(isCashier&&paymentMethod==='cash'&&!$('cashReceived').checked)throw new Error('Konfirmasi bahwa uang tunai sudah benar-benar diterima sebelum menyimpan pembayaran lunas.');
+   if(!startValue||!endValue||!Number.isFinite(duration)||duration<=0)throw new Error('Periksa tanggal dan waktu penyewaan.');
+   if(duration<4)throw new Error('Durasi minimum penyewaan adalah 4 jam.');
+   if(startDate.getTime()<Date.now()-60000)throw new Error('Waktu mulai tidak boleh berada di masa lalu.');
+   const quote=rentalPrice(unit.product_id,duration);
+   if(!quote||quote.total<=0)throw new Error('Tarif produk belum lengkap atau tidak valid. Lengkapi paket tarif terlebih dahulu.');
+   const startISO=startDate.toISOString(),endISO=endDate.toISOString();
+   const {data:conflicts,error:conflictError}=await db.from('rentals')
+    .select('id').eq('unit_id',unit.id)
+    .in('status',['reserved','confirmed','ongoing'])
+    .lt('start_at',endISO).gt('end_at',startISO).limit(1);
+   if(conflictError)throw new Error('Gagal memeriksa jadwal unit: '+conflictError.message);
+   if(conflicts?.length)throw new Error('Unit sudah memiliki jadwal penyewaan yang bertabrakan. Pilih waktu atau unit lain.');
+   const customerName=$('rentalCustomerName').value.trim();
+   const customerPhone=$('rentalCustomerPhone').value.trim();
+   if(!customerName||customerName.length>120)throw new Error('Masukkan nama pelanggan (maksimal 120 karakter).');
+   if(!/^[+0-9][0-9+() .-]{7,28}$/.test(customerPhone))throw new Error('Masukkan nomor WhatsApp yang valid.');
+   pendingRmsRequest={
+    requestId:crypto.randomUUID(),
+    paymentMethod,
+    args:{
+     p_request_id:null,
+     p_customer_name:customerName,
+     p_customer_phone:customerPhone,
+     p_unit_id:unit.id,
+     p_start_at:startISO,
+     p_end_at:endISO,
+     p_identity_verified:true,
+     p_agreement_signed:true,
+     p_guarantee_explained:true,
+     p_notes:$('rentalNotes').value.trim()||null,
+     p_payment_method:paymentMethod,
+     p_cash_received:paymentMethod==='cash'&&$('cashReceived').checked
+    }
+   };
+   pendingRmsRequest.args.p_request_id=pendingRmsRequest.requestId;
   }else{
-   paymentNotice=' Tagihan QRIS '+rupiah(quote.total)+' tercatat menunggu verifikasi. QRIS dinamis otomatis belum aktif; konfirmasi dari menu Pembayaran setelah dana diterima.';
+   showMsg('rentalMsg','Melanjutkan permintaan yang sama agar tidak membuat rental atau pembayaran duplikat.');
   }
- }
- const verifiedCount=[payload.identity_verified,payload.agreement_signed,payload.guarantee_explained].filter(Boolean).length;const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';showMsg('rentalMsg','Penyewaan '+code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.'+paymentNotice,'success');
- $('rentalForm').reset();$('rentalPosPaymentMethod').value='';$('cashReceivedWrap').classList.add('hidden');$('cashReceived').checked=false;updateRentalQuote();
- await refresh();
+
+  const {data,error}=await db.rpc('create_rms_rental',pendingRmsRequest.args);
+  if(error){
+   // A database error means the function transaction rolled back; allow edits.
+   // Network/transport errors may have an unknown outcome, so retain the same request ID.
+   if(error.code)pendingRmsRequest=null;
+   throw error;
+  }
+  if(!data?.id||!data?.rental_code)throw new Error('RPC tidak mengembalikan kode rental. Jangan kirim permintaan baru; muat ulang daftar rental terlebih dahulu.');
+
+  const completed=pendingRmsRequest;
+  pendingRmsRequest=null;
+  let paymentNotice='';
+  if(completed.paymentMethod==='cash')paymentNotice=' Pembayaran tunai '+rupiah(data.rental_price)+' tercatat lunas.';
+  else if(completed.paymentMethod==='qris_manual')paymentNotice=' Tagihan QRIS '+rupiah(data.rental_price)+' tercatat menunggu verifikasi dana masuk.';
+  const verifiedCount=3;
+  const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';
+  showMsg('rentalMsg','Penyewaan '+data.rental_code+' berhasil dibuat. '+verificationLabel+'. Status jadwal: reserved.'+paymentNotice,'success');
+  $('rentalForm').reset();
+  $('rentalPosPaymentMethod').value='';
+  $('cashReceivedWrap').classList.add('hidden');
+  $('cashReceived').checked=false;
+  updateRentalQuote();
+  try{
+   await refresh();
+  }catch(refreshError){
+   showMsg('rentalMsg','Rental '+data.rental_code+' berhasil tersimpan'+paymentNotice+' Namun, penyegaran tampilan gagal: '+(refreshError.message||'Kesalahan tidak diketahui.')+'. Jangan buat rental ulang; tekan Muat ulang.','success');
+  }
  }catch(error){
-  showMsg('rentalMsg','Terjadi kesalahan saat menyimpan penyewaan: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
+  const retryHint=pendingRmsRequest
+   ? ' Permintaan yang sama masih disimpan di halaman ini. Tekan tombol yang sama untuk mencoba lagi tanpa membuat duplikat.'
+   : '';
+  showMsg('rentalMsg','Penyimpanan rental gagal: '+(error?.message||'Kesalahan tidak diketahui.')+retryHint,'error');
  }finally{
   rentalSubmitting=false;
   submitButton.disabled=false;
-  submitButton.textContent=originalButtonText;
+  submitButton.textContent=pendingRmsRequest?'Lanjutkan penyimpanan rental':originalButtonText;
  }
 });
 $('stockProduct').addEventListener('change',()=>{
