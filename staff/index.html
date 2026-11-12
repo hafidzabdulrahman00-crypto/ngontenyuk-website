@@ -105,7 +105,7 @@ th{background:#F7F3FF}
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
     </form>
    </div>
-   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th><th>PDF perjanjian</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th><th>Pengembalian</th><th>PDF perjanjian</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-payments" class="page hidden">
    <div class="page-head"><div><h2>Pembayaran</h2><p>Catat pembayaran bertahap dan pantau sisa tagihan rental.</p></div><button class="btn secondary" id="paymentRefresh">Muat ulang</button></div>
@@ -401,7 +401,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
@@ -425,6 +425,9 @@ async function loadRentals(token=sessionRenderToken){
    '<span class="tag '+(x.guarantee_explained?'green':'orange')+'">'+(x.guarantee_explained?'Garansi dijelaskan':'Garansi belum dijelaskan')+'</span></td>'+
    '<td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br>'+
    '<select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status,complete)+'</select></td>'+
+   '<td>'+(x.rental_returns&&x.rental_returns.length
+    ? '<b>'+safe(label[x.rental_returns[0].return_condition]||x.rental_returns[0].return_condition)+'</b><br><span class="hint">'+new Date(x.rental_returns[0].returned_at).toLocaleString('id-ID')+'</span>'+(x.rental_returns[0].notes?'<br><span class="hint">'+safe(x.rental_returns[0].notes)+'</span>':'')
+    : (x.status==='completed'?'Data pengembalian lama':'Belum dikembalikan'))+'</td>'+
    '<td>'+pdfAction+'</td></tr>';
  }).join('')||'<tr><td colspan="8" class="empty">Belum ada penyewaan.</td></tr>';
 }
@@ -780,6 +783,27 @@ $('rentalRows').addEventListener('change',async e=>{
   if(nextStatus==='confirmed'&&!(rental.identity_verified&&rental.agreement_signed&&rental.guarantee_explained)){
    showMsg('globalMsg','Penyewaan belum dapat dikonfirmasi. Verifikasi identitas, tanda tangan perjanjian, dan penyampaian garansi terlebih dahulu.','error');
    await loadRentals();return;
+  }
+  if(nextStatus==='completed'){
+   const condition=prompt('Periksa kondisi mic setelah kembali. Ketik: new, good, fair, atau damaged.','good');
+   if(condition===null){await loadRentals();return;}
+   const normalized=condition.trim().toLowerCase();
+   if(!['new','good','fair','damaged'].includes(normalized)){
+    showMsg('globalMsg','Kondisi tidak valid. Pengembalian dibatalkan.','error');await loadRentals();return;
+   }
+   const notes=prompt('Catatan pemeriksaan/pengembalian (opsional):','');
+   if(notes===null){await loadRentals();return;}
+   input.disabled=true;
+   try{
+    const {data,error}=await db.rpc('complete_rental_return',{p_rental_id:id,p_return_condition:normalized,p_notes:notes.trim()});
+    if(error)throw error;
+    showMsg('globalMsg','Pengembalian '+(data?.unit_code||rental.rental_code)+' dicatat. Status unit: '+(data?.operational_status==='maintenance'?'Perawatan':'Tersedia')+'.','success');
+    await refresh();
+   }catch(err){
+    showMsg('globalMsg','Pengembalian gagal dicatat: '+(err.message||'Kesalahan tidak diketahui.'),'error');
+    await loadRentals();
+   }
+   return;
   }
   input.disabled=true;
   const {error}=await db.from('rentals').update({status:nextStatus}).eq('id',id);
