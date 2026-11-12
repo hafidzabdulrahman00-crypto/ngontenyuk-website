@@ -547,7 +547,7 @@ $('loginForm').addEventListener('submit',async e=>{
   if(error)throw error;
   if(!data?.session)throw new Error('Autentikasi berhasil, tetapi sesi tidak diterima. Muat ulang halaman lalu coba lagi.');
   showMsg('loginMsg','Login berhasil. Menyiapkan dashboard…','success');
-  await handleSession(data.session);
+  // Sesi diproses hanya oleh onAuthStateChange agar tidak ada dua alur render yang saling menimpa.
  }catch(error){
   showMsg('loginMsg','Login gagal: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
  }finally{
@@ -912,16 +912,8 @@ $('productForm').addEventListener('submit',async e=>{
  $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
  await refresh();
 });
-(async()=>{
- try{
-  const {data,error}=await db.auth.getSession();
-  if(error)throw error;
-  await handleSession(data?.session||null);
- }catch(error){
-  setView(false);
-  showMsg('loginMsg','Gagal memeriksa sesi: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
- }
-})();
+// onAuthStateChange mengirim INITIAL_SESSION saat halaman dimulai dan SIGNED_IN setelah login.
+// Tidak memanggil getSession paralel agar INITIAL_SESSION lama tidak menimpa sesi login terbaru.
 </script>
 </body>
 </html>
