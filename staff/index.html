@@ -86,6 +86,7 @@ th{background:#F7F3FF}
       <div class="field"><label for="rentalCustomerName">Nama pelanggan</label><input id="rentalCustomerName" required maxlength="120" placeholder="Nama lengkap"></div>
       <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
       <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
+      <div class="field"><label for="rentalIdentityType">Jenis identitas yang diperlihatkan</label><select id="rentalIdentityType" required><option value="">Pilih KTP/KTM…</option><option value="KTP">KTP</option><option value="KTM">KTM</option></select></div>
       <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas asli (KTP/KTM/identitas lain) telah diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Identitas hanya diperlihatkan untuk dicocokkan, tidak ditahan, tidak difoto, dan nomor NIK tidak disimpan di database.</p></div>
       <div class="field full"><label>Tanda tangan digital untuk surat perjanjian</label>
        <div class="signature-grid">
@@ -343,6 +344,7 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
  line('Produk',details.productName);line('Kode unit',details.unitCode);
  line('Mulai sewa',fmt(rental.start_at));line('Selesai sewa',fmt(rental.end_at));
  line('Durasi',details.duration+' jam');line('Harga sewa',rupiah(rental.rental_price));
+ line('Jenis identitas',details.identity||'KTP/KTM');
  line('Verifikasi identitas','Identitas asli diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan');
  y+=3;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('KETENTUAN PENYEWAAN',left,y);y+=7;
  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
@@ -364,13 +366,6 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
  return doc.output('blob');
 }
 async function saveRmsAgreement(rental,tenantSig,staffSig,details){
- const {error:signatureError}=await db.from('rentals').update({
-  tenant_signature_data:tenantSig,
-  staff_signature_data:staffSig,
-  agreement_signed:true,
-  agreement_signed_at:new Date().toISOString()
- }).eq('id',rental.id);
- if(signatureError)throw new Error('Rental tersimpan, tetapi tanda tangan gagal dicatat: '+signatureError.message);
  const unit=unitsCache.find(x=>x.id===rental.unit_id);
  const productName=unit?.products?.name||'Microphone';
  const blob=makeRmsAgreementPdf({...rental,unitCode:unit?.unit_code||'—'},tenantSig,staffSig,{...details,productName});
@@ -381,21 +376,15 @@ async function saveRmsAgreement(rental,tenantSig,staffSig,details){
  if(pathError)throw new Error('PDF terunggah, tetapi path gagal dicatat: '+pathError.message);
 }
 async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaffSig=null){
- const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,unit_id,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
+ const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,unit_id,identity_document_type,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
  if(error)throw error;
  const tenantSig=rental.tenant_signature_data||suppliedTenantSig;
  const staffSig=rental.staff_signature_data||suppliedStaffSig;
  if(!tenantSig||!staffSig)throw new Error('Tanda tangan pada rental ini belum tersedia. Isi kedua area tanda tangan di formulir RMS dengan tanda tangan para pihak yang sebenarnya, lalu klik Pulihkan PDF kembali.');
- if(!rental.tenant_signature_data||!rental.staff_signature_data){
-  const {error:signatureError}=await db.from('rentals').update({
-   tenant_signature_data:tenantSig,staff_signature_data:staffSig,
-   agreement_signed:true,agreement_signed_at:new Date().toISOString()
-  }).eq('id',rental.id);
-  if(signatureError)throw signatureError;
- }
+ if(!rental.tenant_signature_data||!rental.staff_signature_data)throw new Error('Tanda tangan asli belum tersimpan pada rental. Demi keabsahan dokumen, pemulihan PDF tidak menerima tanda tangan pengganti.');
  const duration=Math.round((new Date(rental.end_at)-new Date(rental.start_at))/3600000);
  const blob=makeRmsAgreementPdf({...rental,unitCode:rental.units?.unit_code||'—'},tenantSig,staffSig,{
-  name:rental.customers?.name||'Penyewa',phone:rental.customers?.phone||'—',
+  name:rental.customers?.name||'Penyewa',phone:rental.customers?.phone||'—',identity:rental.identity_document_type||'KTP/KTM',
   productName:rental.units?.products?.name||'Microphone',duration,staffName:currentProfile?.full_name||'Petugas NgontenYuk.co'
  });
  const path=rental.id+'/agreement-'+rental.id+'.pdf';
@@ -406,11 +395,11 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,agreement_signed,guarantee_explained,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
-  const complete=x.identity_verified&&x.agreement_signed&&x.guarantee_explained;
+  const complete=x.identity_verified&&['KTP','KTM'].includes(x.identity_document_type)&&!!x.identity_verified_at&&x.agreement_signed&&!!x.tenant_signature_data&&!!x.staff_signature_data&&!!x.agreement_signed_at&&x.guarantee_explained&&!!x.guarantee_explained_at;
   const canChange=(rentalStatusTransitions[x.status]||[]).length>0;
   const canRecoverPdf=!x.agreement_pdf_path;
   const pdfAction=x.agreement_pdf_path
@@ -424,9 +413,9 @@ async function loadRentals(token=sessionRenderToken){
    '<td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td>'+
    '<td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td>'+
    '<td>'+rupiah(x.rental_price)+'</td>'+
-   '<td><label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="identity_verified" '+(x.identity_verified?'checked':'')+'> Identitas</label><br>'+
-   '<label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="agreement_signed" '+(x.agreement_signed?'checked':'')+'> Perjanjian</label><br>'+
-   '<label><input type="checkbox" data-rental-id="'+safe(x.id)+'" data-requirement="guarantee_explained" '+(x.guarantee_explained?'checked':'')+'> Garansi</label></td>'+
+   '<td><span class="tag '+(complete?'green':'orange')+'">'+(x.identity_verified?'Identitas '+safe(x.identity_document_type||''):'Identitas belum diverifikasi')+'</span><br>'+
+   '<span class="tag '+(x.agreement_signed&&x.tenant_signature_data&&x.staff_signature_data?'green':'orange')+'">'+(x.agreement_signed&&x.tenant_signature_data&&x.staff_signature_data?'Dua tanda tangan tersimpan':'Tanda tangan belum lengkap')+'</span><br>'+
+   '<span class="tag '+(x.guarantee_explained?'green':'orange')+'">'+(x.guarantee_explained?'Garansi dijelaskan':'Garansi belum dijelaskan')+'</span></td>'+
    '<td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br>'+
    '<select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status,complete)+'</select></td>'+
    '<td>'+pdfAction+'</td></tr>';
@@ -719,15 +708,6 @@ $('rentalRows').addEventListener('click',async e=>{
 });
 $('rentalRows').addEventListener('change',async e=>{
  const input=e.target;
- if(input instanceof HTMLInputElement&&input.type==='checkbox'){
-  const id=input.dataset.rentalId,field=input.dataset.requirement;
-  const allowed=['identity_verified','agreement_signed','guarantee_explained'];
-  if(!id||!allowed.includes(field))return;
-  input.disabled=true;
-  const {error}=await db.from('rentals').update({[field]:input.checked}).eq('id',id);
-  if(error){showMsg('globalMsg','Gagal memperbarui persyaratan: '+error.message,'error');await loadRentals();return;}
-  await loadRentals();return;
- }
  if(input instanceof HTMLSelectElement&&input.dataset.rentalStatus){
   const id=input.dataset.rentalStatus,nextStatus=input.value;
   const rental=rentalsCache.find(x=>x.id===id);
@@ -775,6 +755,8 @@ $('rentalForm').addEventListener('submit',async e=>{
    if(!unit||unit.operational_status!=='available'||unit.condition==='damaged'||unit.products?.is_active===false)throw new Error('Unit tidak tersedia, produk nonaktif, atau kondisinya rusak. Muat ulang data dan pilih unit lain.');
    const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
    const tenantSig=rmsSignatureData('rmsTenantSignature'),staffSig=rmsSignatureData('rmsStaffSignature');
+   const identityDocumentType=$('rentalIdentityType').value;
+   if(!['KTP','KTM'].includes(identityDocumentType))throw new Error('Pilih jenis identitas KTP atau KTM yang benar-benar diperlihatkan petugas.');
    if(!tenantSig||!staffSig)throw new Error('Kedua tanda tangan wajib diisi sebelum rental dibuat.');
    if(!requirementsComplete)throw new Error('Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.');
    const isCashier=['owner','admin'].includes(currentProfile?.role);
@@ -801,7 +783,7 @@ $('rentalForm').addEventListener('submit',async e=>{
     requestId:crypto.randomUUID(),
     paymentMethod,
     tenantSig,staffSig,
-    details:{name:customerName,phone:customerPhone,duration:Math.round(duration),staffName:currentProfile?.full_name||currentUser?.email||'Petugas NgontenYuk.co'},
+    details:{name:customerName,phone:customerPhone,identity:identityDocumentType,duration:Math.round(duration),staffName:currentProfile?.full_name||currentUser?.email||'Petugas NgontenYuk.co'},
     args:{
      p_request_id:null,
      p_customer_name:customerName,
@@ -809,6 +791,9 @@ $('rentalForm').addEventListener('submit',async e=>{
      p_unit_id:unit.id,
      p_start_at:startISO,
      p_end_at:endISO,
+     p_identity_document_type:identityDocumentType,
+     p_tenant_signature_data:tenantSig,
+     p_staff_signature_data:staffSig,
      p_identity_verified:true,
      p_agreement_signed:true,
      p_guarantee_explained:true,
@@ -841,6 +826,7 @@ $('rentalForm').addEventListener('submit',async e=>{
   const verificationLabel=verifiedCount===3?'Persyaratan lengkap':'Menunggu verifikasi ('+verifiedCount+'/3)';
   showMsg('rentalMsg','Penyewaan '+data.rental_code+' berhasil dibuat. '+verificationLabel+'. PDF perjanjian dan tanda tangan berhasil disimpan. Status jadwal: reserved.'+paymentNotice,'success');
   $('rentalForm').reset();
+  $('rentalIdentityType').value='';
   clearRmsSignature('rmsTenantSignature');clearRmsSignature('rmsStaffSignature');
   $('rentalPosPaymentMethod').value='';
   $('cashReceivedWrap').classList.add('hidden');
