@@ -45,7 +45,7 @@ a{color:#7136D9}
 <div class="layout"><main>
 <section class="panel"><h2>1. Pilih microphone</h2><p class="muted">Unit dan tarif diambil langsung dari Supabase.</p><div id="productGrid" class="products">Memuat inventaris…</div></section>
 <section class="panel"><h2>2. Jadwal penyewaan</h2><div class="grid"><div class="field full"><label>Pilih unit microphone</label><select id="unit"><option value="">Pilih unit untuk ditambahkan…</option></select><button class="btn secondary" id="addUnit" type="button">+ Tambahkan unit</button><div id="cartList"><p class="hint">Belum ada unit dalam transaksi.</p></div></div><div class="field"><label>Durasi paket</label><select id="duration"><option value="4">4 jam</option><option value="6">6 jam</option><option value="12">12 jam</option><option value="24">24 jam</option></select></div><div class="field"><label>Mulai sewa</label><input id="start" type="datetime-local" required></div><div class="field"><label>Selesai sewa</label><input id="end" type="datetime-local" readonly></div></div><div class="quote"><div class="muted">TOTAL HARGA SEWA OTOMATIS</div><div class="total" id="total">Rp0</div><div class="hint" id="priceHint">Pilih unit dan durasi untuk menghitung harga.</div></div></section>
-<section class="panel"><h2>3. Data pelanggan & jaminan</h2><div class="grid"><div class="field"><label>Nama lengkap</label><input id="customerName" maxlength="120" required placeholder="Nama penyewa"></div><div class="field"><label>Nomor WhatsApp</label><input id="customerPhone" maxlength="30" required placeholder="08xxxxxxxxxx"></div><div class="field"><label>Dokumen jaminan fisik</label><select id="identityType"><option value="">Pilih KTM/KTP</option><option value="KTM">KTM</option><option value="KTP">KTP</option></select></div><div class="field"><label>Konfirmasi penitipan</label><label class="checkline"><input type="checkbox" id="identityHeld"> KTP/KTM telah diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan</label></div><div class="field full"><label>Checklist ketentuan</label><label class="checkline"><input type="checkbox" id="guaranteeExplained"> Ketentuan jaminan, keterlambatan, kerusakan, dan pengembalian sudah dijelaskan</label><label class="checkline"><input type="checkbox" id="termsAccepted"> Pelanggan sudah membaca dan menyetujui surat perjanjian</label></div></div><p class="hint">Sistem hanya mencatat jenis identitas. Dokumen asli diperlihatkan untuk dicocokkan lalu langsung dikembalikan; tidak ditahan, tidak difoto, dan NIK tidak disimpan.</p></section>
+<section class="panel"><h2>3. Data pelanggan & jaminan</h2><div class="grid"><div class="field"><label>Nama lengkap</label><input id="customerName" maxlength="120" required placeholder="Nama penyewa"></div><div class="field"><label>Nomor WhatsApp</label><input id="customerPhone" maxlength="30" required placeholder="08xxxxxxxxxx"></div><div class="field"><label>Dokumen jaminan fisik</label><select id="identityType"><option value="">Pilih KTM/KTP</option><option value="KTM">KTM</option><option value="KTP">KTP</option></select></div><div class="field"><label>Konfirmasi penitipan</label><label class="checkline"><input type="checkbox" id="identityHeld"> Identitas asli telah diserahkan kepada petugas sebagai jaminan selama masa penyewaan</label></div><div class="field full"><label>Checklist ketentuan</label><label class="checkline"><input type="checkbox" id="guaranteeExplained"> Ketentuan jaminan, keterlambatan, kerusakan, dan pengembalian sudah dijelaskan</label><label class="checkline"><input type="checkbox" id="termsAccepted"> Pelanggan sudah membaca dan menyetujui surat perjanjian</label></div></div><p class="hint">Penyewa menyerahkan identitas asli sebagai jaminan selama masa penyewaan. Identitas dikembalikan setelah unit dikembalikan dan seluruh kewajiban penyewa diselesaikan.</p></section>
 <section class="panel"><h2>4. Surat sewa & tanda tangan iPad</h2><p class="muted">Penyewa dan petugas dapat menandatangani area putih menggunakan stylus atau jari.</p><div class="grid"><div class="field"><label>Tanda tangan penyewa</label><canvas id="tenantSig" class="signature" aria-label="Tanda tangan penyewa"></canvas><div class="sigtools"><span>Gunakan stylus / jari</span><button class="btn ghost" type="button" data-clear="tenantSig">Bersihkan</button></div></div><div class="field"><label>Tanda tangan petugas</label><canvas id="staffSig" class="signature" aria-label="Tanda tangan petugas"></canvas><div class="sigtools"><span>Gunakan stylus / jari</span><button class="btn ghost" type="button" data-clear="staffSig">Bersihkan</button></div></div></div><div class="notice">Surat PDF dibuat terpisah untuk setiap rental, memuat data transaksi, ketentuan, dan kedua tanda tangan. File disimpan di penyimpanan privat dan dapat dibuka dari Staff RMS.</div></section>
 <section class="panel"><h2>5. Pembayaran</h2>
 <div class="grid">
@@ -64,7 +64,7 @@ a{color:#7136D9}
 <h3>QRIS NgontenYuk.co</h3>
 <div id="manualQris" style="display:grid;gap:10px;justify-items:center;padding:14px;border:1px solid #e9e3f4;border-radius:14px;background:#fff">
 <strong>QRIS NgontenYuk.co</strong>
-<iframe title="QRIS Mas02 Education" src="https://drive.google.com/file/d/1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y/preview" style="width:min(100%,360px);height:440px;border:0;border-radius:10px;background:#fff" loading="lazy" allow="autoplay"></iframe>
+<img src="https://drive.google.com/uc?export=view&id=1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y" alt="QRIS NgontenYuk.co" style="display:block;width:min(100%,360px);height:auto;max-height:440px;object-fit:contain;border:0;border-radius:10px;background:#fff" loading="eager" referrerpolicy="no-referrer" onerror="this.hidden=true;document.getElementById('qrisFallback').hidden=false"><p id="qrisFallback" class="hint" hidden>Gambar QRIS tidak dapat dimuat. Gunakan tautan buka gambar QRIS di bawah.</p>
 <a href="https://drive.google.com/file/d/1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y/view?usp=share_link" target="_blank" rel="noopener noreferrer">Buka gambar QRIS statis</a>
 <span class="hint">Scan QRIS di atas sesuai nominal transaksi. Pembayaran akan diverifikasi petugas sebelum dinyatakan lunas.</span>
 </div>
@@ -151,7 +151,7 @@ function buildAgreementPdf(rental,tenantSig,staffSig,details){
  line('Selesai sewa',agreementDate(rental.end_at));
  line('Durasi',details.duration+' jam');
  line('Harga sewa',money(rental.rental_price));
- line('Identitas jaminan',details.identity+' diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan');
+ line('Identitas jaminan',details.identity+' diserahkan kepada petugas sebagai jaminan selama masa penyewaan');
  y+=3;
  doc.setFont('helvetica','bold');doc.setFontSize(11);
  doc.text('KETENTUAN PENYEWAAN',left,y);y+=7;
@@ -161,7 +161,7 @@ function buildAgreementPdf(rental,tenantSig,staffSig,details){
   '2. Unit dikembalikan pada waktu dan tempat yang telah disepakati.',
   '3. Kondisi serta kelengkapan unit diperiksa bersama saat pengembalian.',
   '4. Penanganan keterlambatan atau kerusakan mengikuti ketentuan sewa yang telah dijelaskan dan disetujui para pihak.',
-  '5. Dokumen identitas asli hanya diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan; dokumen tidak ditahan atau difoto.',
+  '5. Penyewa menyerahkan identitas asli kepada petugas sebagai jaminan selama masa penyewaan. Identitas dikembalikan setelah unit dikembalikan dan seluruh kewajiban penyewa diselesaikan.',
   '6. Kedua pihak menyatakan telah membaca dan menyetujui ketentuan penyewaan ini.'
  ];
  for(const term of terms){
@@ -289,7 +289,7 @@ $('checkout').addEventListener('click',async()=>{
    const duration=Number($('duration').value);
    const identity=$('identityType').value;
    if(!name||!/^[+0-9][0-9+() .-]{7,28}$/.test(phone))throw new Error('Lengkapi nama dan nomor WhatsApp yang valid.');
-   if(!identity||!$('identityHeld').checked)throw new Error('Pilih jenis KTM/KTP dan konfirmasi dokumen telah diperlihatkan untuk verifikasi lalu langsung dikembalikan.');
+   if(!identity||!$('identityHeld').checked)throw new Error('Pilih jenis KTM/KTP dan konfirmasi identitas asli telah diserahkan sebagai jaminan selama masa penyewaan.');
    if(!$('guaranteeExplained').checked||!$('termsAccepted').checked)throw new Error('Lengkapi penjelasan jaminan dan persetujuan perjanjian.');
    const tenantSig=getTenantSig(),staffSig=getStaffSig();
    if(!tenantSig||!staffSig)throw new Error('Kedua pihak harus menandatangani surat menggunakan stylus/jari.');
