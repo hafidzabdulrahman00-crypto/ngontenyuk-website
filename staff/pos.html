@@ -374,7 +374,22 @@ $('checkout').addEventListener('click',async()=>{
   const databaseRejected=typeof err?.code==='string'&&/^[0-9A-Z]{5}$/.test(err.code);
   if(pendingCheckout&&!pendingCheckout.rentals&&databaseRejected){
    pendingCheckout=null;
-   message((err.message||'Transaksi ditolak database.')+' Tidak ada rental yang dibuat dari permintaan ini. Perbaiki unit atau jadwal, lalu checkout kembali.','error');
+   if(err?.code==='23P01'){
+    try{
+     await refreshAvailability();
+     renderQuote();
+     const blocked=selectedUnits.filter(u=>conflictingUnitIds.has(u.id)).map(u=>u.unit_code);
+     message(blocked.length
+      ? 'Jadwal bentrok terdeteksi ulang oleh database pada unit '+blocked.join(', ')+'. Unit tersebut sekarang ditandai tidak tersedia. Hapus unit yang bentrok atau pilih jadwal/unit lain. Tidak ada transaksi baru yang dibuat.'
+      : 'Database menolak jadwal karena bentrok. Ketersediaan sudah diperbarui; periksa kembali unit dan waktu sebelum checkout ulang. Tidak ada transaksi baru yang dibuat.','error');
+    }catch(refreshError){
+     availabilityError=refreshError;
+     renderQuote();
+     message('Database menolak jadwal karena bentrok. Pembaruan ketersediaan gagal; tekan Muat ulang sebelum mencoba lagi. Tidak ada transaksi baru yang dibuat.','error');
+    }
+   }else{
+    message((err.message||'Transaksi ditolak database.')+' Tidak ada rental yang dibuat dari permintaan ini. Perbaiki data, lalu checkout kembali.','error');
+   }
   }else{
    const retryHint=pendingCheckout
     ? (pendingCheckout.rentals
