@@ -70,7 +70,7 @@ body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8
 .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .panel-heading h3{margin:0;font-size:15px;color:#251444}
 .panel-heading p{font-size:11px;color:#897f9b;margin:3px 0 0}
-.dashboard-period{font-size:10px;color:#6d4ab1;background:#f1eaff;border-radius:99px;padding:6px 10px}
+.dashboard-period{font-size:10px;color:#6d4ab1;background:#f1eaff;border-radius:99px;padding:6px 10px}.dashboard-period-select{font:inherit;font-size:11px;color:#6d4ab1;background:#f1eaff;border:1px solid #e5d8fb;border-radius:9px;padding:7px 10px;outline:none}.dashboard-chart-scroll{width:100%;overflow-x:auto;overflow-y:hidden}.dashboard-chart{min-width:100%}.dashboard-chart-scroll .dashboard-chart{width:max-content;min-width:100%}.dashboard-chart-scroll .chart-col{flex:0 0 34px}.dashboard-chart-scroll .chart-label{white-space:nowrap}
 .dashboard-chart{height:160px;display:flex;align-items:end;justify-content:space-around;gap:12px;padding:14px 8px 0;border-bottom:1px solid #eee8f6}
 .chart-col{height:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:7px;min-width:0}
 .chart-bar-wrap{height:118px;width:100%;display:flex;align-items:end;justify-content:center}
@@ -133,7 +133,7 @@ body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8
     <div class="stat"><div class="stat-icon violet">⌁</div><span>Perawatan</span><strong id="statMaintenance">—</strong><small>Perlu pemeriksaan</small></div>
    </div>
    <div class="dashboard-grid">
-    <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p>Jumlah transaksi dibuat · 7 hari terakhir</p></div><span class="dashboard-period">7 hari</span></div><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Grafik akan muncul setelah data rental tersedia.</div></div></div>
+    <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p id="dashboardChartSubtitle">Jumlah transaksi dibuat · 7 hari terakhir</p></div><select id="dashboardPeriodSelect" class="dashboard-period-select" aria-label="Periode grafik rental"><option value="7">7 hari</option><option value="30">30 hari</option><option value="60">60 hari</option><option value="90">90 hari</option></select></div><div class="dashboard-chart-scroll"><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Memuat grafik rental…</div></div></div></div>
     <div class="panel dashboard-transactions"><div class="panel-heading"><h3>Transaksi Terbaru</h3><button class="text-link" type="button" data-page="rentals">Lihat Semua →</button></div><div class="recent-transactions" id="recentRentalRows"><div class="chart-empty">Memuat transaksi…</div></div></div>
    </div>
    <div class="panel dashboard-inventory-panel"><div class="panel-heading"><h3>Unit Terbaru</h3><button class="text-link" type="button" data-page="inventory">Lihat Inventaris →</button></div><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th></tr></thead><tbody id="recentRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
@@ -475,7 +475,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  renderDashboardInsights();
@@ -520,11 +520,16 @@ function renderDashboardInsights(){
  }
  const chart=$('dashboardChart');
  if(chart){
+  const range=Number($('dashboardPeriodSelect')?.value||7);
+  const subtitle=$('dashboardChartSubtitle');
+  if(subtitle)subtitle.textContent='Jumlah transaksi dibuat · '+range+' hari terakhir';
   const now=new Date();const days=[];
-  for(let n=6;n>=0;n--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-n);days.push(d);}
+  for(let n=range-1;n>=0;n--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-n);days.push(d);}
   const counts=days.map(d=>rows.filter(x=>{const t=new Date(x.created_at);return t.getFullYear()===d.getFullYear()&&t.getMonth()===d.getMonth()&&t.getDate()===d.getDate();}).length);
   const max=Math.max(1,...counts);
-  chart.innerHTML=days.map((d,i)=>'<div class="chart-col"><span class="chart-value">'+counts[i]+'</span><div class="chart-bar-wrap"><div class="chart-bar" style="height:'+Math.max(3,counts[i]/max*100)+'%"></div></div><span class="chart-label">'+['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]+'</span></div>').join('');
+  const labels=range===7?['Min','Sen','Sel','Rab','Kam','Jum','Sab']:null;
+  chart.style.width='max(100%, '+(days.length*38)+'px)';
+  chart.innerHTML=days.map((d,i)=>'<div class="chart-col"><span class="chart-value">'+counts[i]+'</span><div class="chart-bar-wrap"><div class="chart-bar" style="height:'+Math.max(3,counts[i]/max*100)+'%"></div></div><span class="chart-label">'+(labels?labels[d.getDay()]:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'))+'</span></div>').join('');
  }
  const avatar=$('dashboardAvatar');
  if(avatar&&currentProfile?.full_name)avatar.textContent=currentProfile.full_name.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
@@ -945,6 +950,7 @@ $('rentalRows').addEventListener('change',async e=>{
  }
 });
 ['rentalUnit','rentalStart','rentalEnd'].forEach(id=>{ $(id).addEventListener('input',updateRentalQuote); $(id).addEventListener('change',updateRentalQuote); });
+$('dashboardPeriodSelect')?.addEventListener('change',()=>renderDashboardInsights());
 document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x===btn));
  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
