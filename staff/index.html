@@ -89,8 +89,8 @@ th{background:#F7F3FF}
       <div class="field"><label for="rentalCustomerName">Nama pelanggan</label><input id="rentalCustomerName" required maxlength="120" placeholder="Nama lengkap"></div>
       <div class="field"><label for="rentalCustomerPhone">Nomor WhatsApp</label><input id="rentalCustomerPhone" required maxlength="30" placeholder="08xxxxxxxxxx"></div>
       <div class="field"><label for="rentalUnit">Unit microphone</label><select id="rentalUnit" required><option value="">Pilih unit tersedia…</option></select></div>
-      <div class="field"><label for="rentalIdentityType">Jenis identitas yang diperlihatkan</label><select id="rentalIdentityType" required><option value="">Pilih KTP/KTM…</option><option value="KTP">KTP</option><option value="KTM">KTM</option></select></div>
-      <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Identitas asli (KTP/KTM/identitas lain) telah diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Identitas hanya diperlihatkan untuk dicocokkan, tidak ditahan, tidak difoto, dan nomor NIK tidak disimpan di database.</p></div>
+      <div class="field"><label for="rentalIdentityType">Jenis identitas yang diserahkan sebagai jaminan</label><select id="rentalIdentityType" required><option value="">Pilih KTP/KTM…</option><option value="KTP">KTP</option><option value="KTM">KTM</option></select></div>
+      <div class="field full"><label>Verifikasi wajib sebelum pembayaran</label><div class="checks"><label><input type="checkbox" id="rentalIdentity"> Dokumen identitas asli telah diterima sebagai jaminan selama masa penyewaan</label><label><input type="checkbox" id="rentalAgreement"> Pelanggan menyetujui ketentuan/perjanjian sewa</label><label><input type="checkbox" id="rentalGuarantee"> Ketentuan garansi, keterlambatan, dan pengembalian telah dijelaskan</label></div><p class="hint">Ketiga persyaratan wajib dicentang sebelum transaksi dan pembayaran diproses. Dokumen identitas asli disimpan sementara sebagai jaminan selama masa penyewaan dan dikembalikan setelah masa sewa berakhir serta seluruh kewajiban penyewa diselesaikan. Nomor NIK tidak disimpan di database.</p></div>
       <div class="field full"><label>Tanda tangan digital untuk surat perjanjian</label>
        <div class="signature-grid">
         <div class="signature-card"><b>Tanda tangan penyewa</b><canvas id="rmsTenantSignature" aria-label="Area tanda tangan penyewa"></canvas><button class="btn ghost" type="button" data-clear-rms-signature="rmsTenantSignature">Bersihkan</button></div>
@@ -364,7 +364,7 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
  line('Mulai sewa',fmt(rental.start_at));line('Selesai sewa',fmt(rental.end_at));
  line('Durasi',details.duration+' jam');line('Harga sewa',rupiah(rental.rental_price));
  line('Jenis identitas',details.identity||'KTP/KTM');
- line('Verifikasi identitas','Identitas asli diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan');
+ line('Jaminan identitas','Dokumen identitas asli diterima sebagai jaminan selama masa penyewaan dan dikembalikan setelah masa sewa berakhir serta seluruh kewajiban penyewa diselesaikan');
  y+=3;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('KETENTUAN PENYEWAAN',left,y);y+=7;
  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
  const terms=[
@@ -372,7 +372,7 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
   '2. Unit dikembalikan pada waktu dan tempat yang telah disepakati.',
   '3. Kondisi serta kelengkapan unit diperiksa bersama saat pengembalian.',
   '4. Penanganan keterlambatan atau kerusakan mengikuti ketentuan sewa yang telah dijelaskan dan disetujui para pihak.',
-  '5. Dokumen identitas asli hanya diperlihatkan untuk verifikasi dan langsung dikembalikan kepada pelanggan.\nDokumen tidak ditahan atau difoto.',
+  '5. Penyewa wajib menyerahkan dokumen identitas asli kepada pihak NgontenYuk.co sebagai jaminan selama masa penyewaan. Dokumen akan dikembalikan setelah masa sewa berakhir dan seluruh kewajiban penyewa telah diselesaikan.',
   '6. Kedua pihak menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan dalam surat perjanjian ini.'
  ];
  for(const term of terms){const lines=doc.splitTextToSize(term,w-32);if(y+lines.length*4.5>245){doc.addPage();y=20;}doc.text(lines,left,y);y+=lines.length*4.5+3;}
@@ -891,7 +891,7 @@ $('rentalForm').addEventListener('submit',async e=>{
    const requirementsComplete=$('rentalIdentity').checked&&$('rentalAgreement').checked&&$('rentalGuarantee').checked;
    const tenantSig=rmsSignatureData('rmsTenantSignature'),staffSig=rmsSignatureData('rmsStaffSignature');
    const identityDocumentType=$('rentalIdentityType').value;
-   if(!['KTP','KTM'].includes(identityDocumentType))throw new Error('Pilih jenis identitas KTP atau KTM yang benar-benar diperlihatkan petugas.');
+   if(!['KTP','KTM'].includes(identityDocumentType))throw new Error('Pilih jenis identitas KTP atau KTM yang diserahkan penyewa sebagai jaminan.');
    if(!tenantSig||!staffSig)throw new Error('Kedua tanda tangan wajib diisi sebelum rental dibuat.');
    if(!requirementsComplete)throw new Error('Lengkapi ketiga checklist identitas, persetujuan sewa, dan penjelasan garansi sebelum transaksi diproses.');
    const isCashier=['owner','admin'].includes(currentProfile?.role);
