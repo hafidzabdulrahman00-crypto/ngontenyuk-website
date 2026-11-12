@@ -61,6 +61,7 @@ th{background:#F7F3FF}
   <a class="nav" href="./pos.html" style="display:block;text-decoration:none">POS Kasir<small>Kasir iPad & surat digital</small></a>
   <button class="nav" data-page="payments">Pembayaran<small>Tagihan dan riwayat cicilan</small></button>
   <button class="nav" data-page="reviews">Review publik<small>Moderasi testimoni pelanggan</small></button>
+  <button class="nav owner-only" data-page="reports">Laporan keuangan<small>Arus kas dan pengeluaran</small></button>
   <button class="nav owner-only" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
  </aside>
@@ -145,6 +146,14 @@ th{background:#F7F3FF}
    <div class="page-head"><div><h2>Review publik</h2><p>Review dari website masuk sebagai draft dan hanya tampil setelah disetujui petugas.</p></div><button class="btn secondary" id="reviewRefresh">Muat ulang</button></div>
    <div class="panel"><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Rating</th><th>Komentar</th><th>Status & aksi</th></tr></thead><tbody id="reviewRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
   </section>
+  <section id="page-reports" class="page hidden">
+   <div class="page-head"><div><h2>Laporan keuangan</h2><p>Arus kas dari pembayaran lunas dikurangi pengeluaran tercatat.</p></div><button class="btn secondary" id="reportRefresh">Muat ulang</button></div>
+   <div class="panel"><div class="form-grid"><div class="field"><label for="reportStart">Dari tanggal</label><input id="reportStart" type="date"></div><div class="field"><label for="reportEnd">Sampai tanggal</label><input id="reportEnd" type="date"></div></div><div class="actions"><button class="btn" id="reportApply" type="button">Terapkan periode</button><button class="btn ghost" id="reportCsv" type="button">Ekspor CSV</button></div><div id="reportMsg" class="notice hidden"></div></div>
+   <div class="stats"><div class="stat"><span>Penerimaan terkonfirmasi</span><strong id="reportIncome">—</strong></div><div class="stat"><span>Pengeluaran</span><strong id="reportExpense">—</strong></div><div class="stat"><span>Arus kas bersih</span><strong id="reportNet">—</strong></div><div class="stat"><span>Pembayaran lunas</span><strong id="reportPayments">—</strong></div></div>
+   <div class="panel"><h3>Catat pengeluaran</h3><form id="expenseForm"><div class="form-grid"><div class="field"><label for="expenseDescription">Keterangan</label><input id="expenseDescription" required maxlength="160" placeholder="Contoh: pembelian kabel mic"></div><div class="field"><label for="expenseCategory">Kategori</label><select id="expenseCategory"><option>Operasional</option><option>Perawatan</option><option>Transportasi</option><option>Pembelian aset</option><option>Lainnya</option></select></div><div class="field"><label for="expenseAmount">Nominal (Rp)</label><input id="expenseAmount" type="number" min="1" step="1" required></div><div class="field"><label for="expenseDate">Tanggal</label><input id="expenseDate" type="date" required></div></div><div class="actions"><button class="btn" type="submit">Simpan pengeluaran</button></div></form></div>
+   <div class="panel"><h3>Riwayat pengeluaran</h3><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody id="expenseRows"><tr><td colspan="4">Pilih periode laporan.</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Rincian penerimaan</h3><div class="table-wrap"><table><thead><tr><th>Tanggal lunas</th><th>Rental</th><th>Nominal</th><th>Metode</th></tr></thead><tbody id="incomeRows"><tr><td colspan="4">Pilih periode laporan.</td></tr></tbody></table></div></div>
+  </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
    <div class="panel"><h3>Informasi stok masuk</h3>
@@ -221,6 +230,10 @@ function resetWorkspace(){
  $('stockProduct').innerHTML='<option value="">Pilih produk…</option>';
  $('stockForm').reset();$('stockQty').value=1;$('stockCost').value=0;
  $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
+ const today=new Date(),monthStart=new Date(today.getFullYear(),today.getMonth(),1);
+ $('reportStart').value=reportLocalDate(monthStart);$('reportEnd').value=reportLocalDate(today);$('expenseDate').value=reportLocalDate(today);
+ $('expenseForm').reset();$('expenseDate').value=reportLocalDate(today);reportCache={income:[],expenses:[],period:null};
+
  ['globalMsg','stockMsg','productMsg','loginMsg'].forEach(clearMsg);
  document.querySelectorAll('.owner-only').forEach(el=>el.classList.add('hidden'));
 }
@@ -445,6 +458,24 @@ async function loadReviews(){
   return '<tr><td>'+new Date(r.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r.customer_name)+'</b></td><td>'+('★'.repeat(Math.max(0,Math.min(5,Number(r.rating)||0))))+'</td><td style="min-width:220px;white-space:normal">'+safe(r.comment)+'</td><td><span class="tag '+(r.is_published?'green':'orange')+'">'+(r.is_published?'Tampil publik':'Menunggu moderasi')+'</span><br>'+action+'</td></tr>';
  }).join('')||'<tr><td colspan="5" class="empty">Belum ada review masuk.</td></tr>';
 }
+function reportLocalDate(date){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return y+'-'+m+'-'+d;}
+function reportPeriod(){const start=$('reportStart').value,end=$('reportEnd').value;if(!start||!end||start>end)throw new Error('Periode tanggal laporan tidak valid.');const from=new Date(start+'T00:00:00'),until=new Date(end+'T00:00:00');until.setDate(until.getDate()+1);return {start:from.toISOString(),end:until.toISOString(),startLabel:start,endLabel:end};}
+let reportCache={income:[],expenses:[],period:null};
+async function loadReports(){
+ if(!['owner','admin'].includes(currentProfile?.role))throw new Error('Laporan hanya dapat diakses Owner/Admin.');
+ const period=reportPeriod();
+ const [p,e]=await Promise.all([
+  db.from('payments').select('id,rental_id,amount,payment_method,paid_at,rentals(rental_code,customers(name))').eq('payment_status','paid').not('paid_at','is',null).gte('paid_at',period.start).lt('paid_at',period.end).order('paid_at',{ascending:false}).limit(1000),
+  db.from('expenses').select('id,description,category,amount,expense_date,created_at').gte('expense_date',period.startLabel).lte('expense_date',period.endLabel).order('expense_date',{ascending:false}).limit(1000)
+ ]);
+ if(p.error)throw p.error;if(e.error)throw e.error;
+ reportCache={income:p.data||[],expenses:e.data||[],period};
+ const income=reportCache.income.reduce((n,x)=>n+Number(x.amount||0),0),expense=reportCache.expenses.reduce((n,x)=>n+Number(x.amount||0),0);
+ $('reportIncome').textContent=rupiah(income);$('reportExpense').textContent=rupiah(expense);$('reportNet').textContent=rupiah(income-expense);$('reportNet').style.color=income-expense<0?'#c03952':'#198754';$('reportPayments').textContent=String(reportCache.income.length);
+ $('expenseRows').innerHTML=reportCache.expenses.map(x=>'<tr><td>'+safe(x.expense_date)+'</td><td>'+safe(x.category||'Lainnya')+'</td><td>'+safe(x.description)+'</td><td>'+rupiah(x.amount)+'</td></tr>').join('')||'<tr><td colspan="4" class="empty">Tidak ada pengeluaran pada periode ini.</td></tr>';
+ $('incomeRows').innerHTML=reportCache.income.map(x=>'<tr><td>'+new Date(x.paid_at).toLocaleString('id-ID')+'</td><td>'+safe(x.rentals?.rental_code||'—')+'<br><span class="hint">'+safe(x.rentals?.customers?.name||'—')+'</span></td><td>'+rupiah(x.amount)+'</td><td>'+safe(paymentMethodLabel(x.payment_method))+'</td></tr>').join('')||'<tr><td colspan="4" class="empty">Belum ada penerimaan terkonfirmasi.</td></tr>';
+}
+function exportReportCsv(){if(!reportCache.period){showMsg('reportMsg','Muat laporan terlebih dahulu sebelum ekspor.','error');return;}const rows=[['Jenis','Tanggal','Referensi','Kategori/Metode','Nominal']];reportCache.income.forEach(x=>rows.push(['Penerimaan',x.paid_at,x.rentals?.rental_code||'',x.payment_method||'',Number(x.amount||0)]));reportCache.expenses.forEach(x=>rows.push(['Pengeluaran',x.expense_date,x.description||'',x.category||'',Number(x.amount||0)]));const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\\r\\n');const blob=new Blob(['\\uFEFF',csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ngontenyuk-laporan-'+reportCache.period.startLabel+'-'+reportCache.period.endLabel+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function paymentStatusLabel(status){
  return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan',voided:'Dibatalkan'})[status]||status;
 }
@@ -553,6 +584,7 @@ document.querySelector('.side').addEventListener('click',e=>{
  document.getElementById('page-'+page).classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el===nav));
  clearMsg('globalMsg');
+ if(page==='reports')loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error'));
 });
 $('loginForm').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -590,6 +622,20 @@ $('logoutBtn').addEventListener('click',async()=>{
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
 $('reviewRefresh').addEventListener('click',()=>loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error')));
+$('reportRefresh').addEventListener('click',()=>loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error')));
+$('reportApply').addEventListener('click',()=>loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error')));
+$('reportCsv').addEventListener('click',exportReportCsv);
+$('expenseForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!['owner','admin'].includes(currentProfile?.role)){showMsg('reportMsg','Akses pengeluaran ditolak.','error');return;}
+ const button=e.submitter||$('expenseForm').querySelector('button[type="submit"]');button.disabled=true;
+ try{
+  const payload={description:$('expenseDescription').value.trim(),category:$('expenseCategory').value,amount:Number($('expenseAmount').value),expense_date:$('expenseDate').value};
+  if(payload.description.length<3||payload.description.length>160||!Number.isSafeInteger(payload.amount)||payload.amount<=0||!payload.expense_date)throw new Error('Periksa keterangan, nominal, dan tanggal pengeluaran.');
+  const {error}=await db.from('expenses').insert(payload);if(error)throw error;
+  $('expenseForm').reset();$('expenseDate').value=reportLocalDate(new Date());await loadReports();showMsg('reportMsg','Pengeluaran berhasil dicatat.','success');
+ }catch(err){showMsg('reportMsg','Pengeluaran gagal disimpan: '+(err.message||'Kesalahan tidak diketahui.'),'error');}finally{button.disabled=false;}
+});
+
 $('reviewRows').addEventListener('click',async e=>{
  const button=e.target.closest('[data-review-toggle]');
  if(!button)return;
