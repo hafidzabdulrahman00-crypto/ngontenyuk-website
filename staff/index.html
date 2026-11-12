@@ -64,6 +64,7 @@ th{background:#F7F3FF}
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
  </aside>
  <main class="content">
+  <div id="globalMsg" class="notice hidden" role="status" aria-live="polite"></div>
   <section id="page-dashboard" class="page">
    <div class="page-head"><div><h2>Ringkasan</h2><p>Ikhtisar data operasional NgontenYuk.co.</p></div><button class="btn secondary" id="refreshBtn">Muat ulang</button></div>
    <div class="stats">
@@ -174,7 +175,6 @@ th{background:#F7F3FF}
     </form>
    </div>
   </section>
-  <div id="globalMsg" class="notice hidden"></div>
  </main>
 </section>
 <div class="foot">NgontenYuk.co · Staff RMS · Akses dibatasi berdasarkan role akun</div>
@@ -533,12 +533,38 @@ document.querySelector('.side').addEventListener('click',e=>{
  clearMsg('globalMsg');
 });
 $('loginForm').addEventListener('submit',async e=>{
- e.preventDefault();clearMsg('loginMsg');
- const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
- if(error){showMsg('loginMsg',error.message,'error');return;}
- await handleSession(data.session);
+ e.preventDefault();
+ const form=$('loginForm');
+ const submit=form.querySelector('button[type="submit"]');
+ const originalLabel=submit.textContent;
+ submit.disabled=true;
+ submit.textContent='Memverifikasi…';
+ clearMsg('loginMsg');
+ try{
+  const email=$('email').value.trim();
+  const password=$('password').value;
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  if(!data?.session)throw new Error('Autentikasi berhasil, tetapi sesi tidak diterima. Muat ulang halaman lalu coba lagi.');
+  showMsg('loginMsg','Login berhasil. Menyiapkan dashboard…','success');
+  await handleSession(data.session);
+ }catch(error){
+  showMsg('loginMsg','Login gagal: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
+ }finally{
+  submit.disabled=false;
+  submit.textContent=originalLabel;
+ }
 });
-$('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();});
+$('logoutBtn').addEventListener('click',async()=>{
+ const button=$('logoutBtn');
+ button.disabled=true;
+ try{
+  const {error}=await db.auth.signOut();
+  if(error)throw error;
+ }catch(error){
+  showMsg('globalMsg','Gagal keluar: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
+ }finally{button.disabled=false;}
+});
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
 $('inventoryRows').addEventListener('change',async e=>{
@@ -886,7 +912,16 @@ $('productForm').addEventListener('submit',async e=>{
  $('productForm').reset();$('productCategory').value='Wireless Microphone';$('initialQty').value=1;$('initialCost').value=0;
  await refresh();
 });
-(async()=>{const {data:{session}}=await db.auth.getSession();await handleSession(session);})();
+(async()=>{
+ try{
+  const {data,error}=await db.auth.getSession();
+  if(error)throw error;
+  await handleSession(data?.session||null);
+ }catch(error){
+  setView(false);
+  showMsg('loginMsg','Gagal memeriksa sesi: '+(error?.message||'Kesalahan tidak diketahui.'),'error');
+ }
+})();
 </script>
 </body>
 </html>
