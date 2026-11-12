@@ -183,12 +183,12 @@ input.fld[type=datetime-local]{min-height:48px;text-align:left}
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const SUPABASE_URL = 'https://jbsfvxzqzqdxcxmgxscr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_TXIbs6zvsAtYtUzkiyssnA_EHcDj5o2';
+const SUPABASE_URL = 'https://tyuylxmourtnajdireuc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ====== EDIT DI SINI ======
 var WA="6285786203477"; // +62 857-8620-3477
-var API="https://script.google.com/macros/s/AKfycbxc6-3PBoEsCl6hVH93UF7DiHkI9p6ZVHPWSeh5Mf_mws3V2uZp5czIW82ET3ND8im1/exec"; // tempel URL Web App Google Apps Script di sini (lihat panduan)
+// Review publik kini menggunakan RPC Supabase dengan moderasi Staff.
 
 var CNL={"Lightning":"Lightning (iPhone)","USB-C":"USB-C (iPhone 15 ke atas, Android, laptop)","Dual":"Lightning + Type-C (iPhone dan Android)"};
 var SPOTS=["Area kos","Muladi Dome","FEB Undip"];
@@ -297,7 +297,7 @@ $("bStaff").onclick=staffView;
 
 var SEED=[{n:"Pelanggan NgontenYuk.co",s:5,t:"Mic wireless-nya overall bagus dan worth it buat dipakai. Suaranya jernih dan nggak ada gangguan selama dipakai. Kakaknya juga ramah dan proses sewanya cepat.",ts:0},
 {n:"Pelanggan NgontenYuk.co",s:5,t:"Makasih ya kak, buat micnya beneran jernih banget jadi hasilnya mantap. Terus juga enak nyewa di sini karena kakaknya welcome banget, boleh besok-besok lagi kalau mau pinjam ke sini lagi.",ts:0}];
-var extra=[],rate=5,DBR=null,last=0;
+var extra=[],rate=5,last=0;
 function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
 function stars(n){return "★★★★★".slice(0,n)+"☆☆☆☆☆".slice(0,5-n)}
 function renderRv(){
@@ -307,22 +307,30 @@ function renderRv(){
 function drawStars(){$("sp").innerHTML=[1,2,3,4,5].map(function(i){return '<button type="button" data-r="'+i+'" class="'+(i<=rate?'on':'')+'">★</button>'}).join("")}
 $("sp").onclick=function(e){if(e.target.dataset.r){rate=+e.target.dataset.r;drawStars()}};
 function msg(t){$("rvm").textContent=t}
-$("rs").onclick=function(){
- var n=$("rn").value.trim(),t=$("rt").value.trim();
- if(!n||t.length<5){msg("Isi nama dan komentar dulu ya.");return}
- if(Date.now()-last<20000){msg("Tunggu sebentar sebelum kirim lagi.");return}
- var r={n:n,s:rate,t:t,ts:Date.now()};last=Date.now();
- var done=function(){$("rt").value="";msg("Makasih, review kamu sudah masuk!")};
- if(API){fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"review",n:n,s:rate,t:t})}).then(function(x){return x.json()}).then(function(j){if(!j.ok)throw 0;extra.unshift(r);renderRv();done()}).catch(function(){last=0;msg("Gagal mengirim, coba lagi.")})}
- else if(DBR){DBR.add(r).then(done,function(){last=0;msg("Gagal mengirim, coba lagi.")})}
- else{extra.unshift(r);try{localStorage.setItem("ngy_rv",JSON.stringify(extra))}catch(e){}renderRv();done()}
-};
-try{extra=JSON.parse(localStorage.getItem("ngy_rv")||"[]")}catch(e){extra=[]}
-drawStars();renderRv();
-function loadApi(){if(!API)return;
- fetch(API+"?action=reviews").then(function(r){return r.json()}).then(function(a){if(Array.isArray(a)){extra=a;renderRv()}}).catch(function(){});
+async function loadDbReviews(){
+ var result=await db.from("reviews").select("customer_name,rating,comment,created_at").eq("is_published",true).order("created_at",{ascending:false}).limit(30);
+ if(result.error)throw result.error;
+ extra=(result.data||[]).map(function(r){return {n:r.customer_name,s:r.rating,t:r.comment,ts:new Date(r.created_at).getTime()}});
+ renderRv();
 }
-loadApi();if(API)setInterval(loadApi,60000);
+$("rs").onclick=async function(){
+ var n=$("rn").value.trim(),t=$("rt").value.trim(),button=$("rs");
+ if(!n||n.length<2||t.length<5){msg("Isi nama (minimal 2 karakter) dan komentar (minimal 5 karakter).");return}
+ if(Date.now()-last<20000){msg("Tunggu sebentar sebelum kirim lagi.");return}
+ button.disabled=true;button.textContent="Mengirim…";
+ try{
+  var result=await db.rpc("submit_public_review",{p_customer_name:n,p_rating:rate,p_comment:t});
+  if(result.error)throw result.error;
+  last=Date.now();$("rt").value="";msg("Terima kasih! Review kamu diterima dan menunggu moderasi sebelum ditampilkan.");
+ }catch(error){
+  msg(error.message||"Review gagal dikirim. Coba lagi nanti.");
+ }finally{
+  button.disabled=false;button.textContent="Kirim review";
+ }
+};
+drawStars();renderRv();
+loadDbReviews().catch(function(error){console.error("Gagal memuat review:",error);msg("Review belum dapat dimuat. Coba muat ulang halaman.")});
+setInterval(function(){loadDbReviews().catch(function(error){console.error("Gagal memperbarui review:",error)})},60000);
 
 // Efek pointer: panel/kartu Liquid Glass bergerak halus mengikuti mouse.
 (function(){

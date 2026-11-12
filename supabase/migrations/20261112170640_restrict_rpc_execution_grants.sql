@@ -1,0 +1,18 @@
+begin;
+revoke all on function public.add_inventory_stock(uuid,integer,date,numeric,text,text[],text) from public, anon;
+grant execute on function public.add_inventory_stock(uuid,integer,date,numeric,text,text[],text) to authenticated;
+revoke all on function public.correct_payment_amount(uuid,numeric,text) from public, anon;
+grant execute on function public.correct_payment_amount(uuid,numeric,text) to authenticated;
+revoke all on function public.create_pos_checkout(uuid,text,text,jsonb,text,boolean) from public, anon;
+grant execute on function public.create_pos_checkout(uuid,text,text,jsonb,text,boolean) to authenticated;
+revoke all on function public.create_rms_rental(uuid,text,text,uuid,timestamptz,timestamptz,text,text,text,boolean,boolean,boolean,text,text,boolean) from public, anon;
+grant execute on function public.create_rms_rental(uuid,text,text,uuid,timestamptz,timestamptz,text,text,text,boolean,boolean,boolean,text,text,boolean) to authenticated;
+revoke all on function public.create_rms_rental(uuid,text,text,uuid,timestamptz,timestamptz,boolean,boolean,boolean,text,text,boolean) from public, anon;
+grant execute on function public.create_rms_rental(uuid,text,text,uuid,timestamptz,timestamptz,boolean,boolean,boolean,text,text,boolean) to authenticated;
+revoke all on function public.current_user_role() from public, anon;
+grant execute on function public.current_user_role() to authenticated;
+revoke all on function public.get_public_catalog() from public;
+grant execute on function public.get_public_catalog() to anon, authenticated;
+revoke all on function public.void_payment(uuid,text) from public, anon;
+grant execute on function public.void_payment(uuid,text) to authenticated;
+commit;

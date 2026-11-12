@@ -44,6 +44,11 @@ to authenticated
 using (
   bucket_id = 'rental-agreements'
   and (select public.current_user_role()) in ('owner', 'admin', 'staff')
+  and exists (
+    select 1
+    from public.rentals r
+    where r.id::text = (storage.foldername(name))[1]
+  )
 );
 
 drop policy if exists rental_agreements_staff_insert
