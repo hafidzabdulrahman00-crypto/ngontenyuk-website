@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#351078">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>Staff RMS — NgontenYuk.co</title>
 <style>
 :root{--ink:#28213b;--muted:#77718a;--purple:#7654c8;--purple2:#9275df;--line:#e9e3f4;--paper:#fff;--bg:#f7f4fc;--good:#198754;--bad:#c03952;--shadow:0 12px 34px #39245b12}
@@ -91,6 +94,12 @@ body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8
 @media(max-width:900px){.shell{padding:10px}.layout{grid-template-columns:1fr}.side{min-height:0;display:flex;overflow:auto;gap:4px;padding:8px}.side:before{display:none}.nav{flex:0 0 auto;width:auto}.nav small{display:none}.content{padding:0 16px 18px}.dashboard-toolbar{margin:0 -16px 18px;padding:0 16px}.dashboard-grid{grid-template-columns:1fr}.dashboard-chart-panel,.dashboard-transactions{min-height:0}}
 @media(max-width:560px){.shell{padding:0}.layout{border-radius:0;min-height:100vh}.content{padding:0 12px 16px}.dashboard-toolbar{margin:0 -12px 14px;padding:0 12px;height:52px}.dashboard-search{width:78%}.dashboard-heading h2{font-size:22px}.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dashboard-stats .stat{min-height:124px;padding:12px}.dashboard-stats .stat strong{font-size:25px}.panel{padding:14px}.recent-transaction{grid-template-columns:minmax(0,1fr) auto;gap:7px}.recent-amount{grid-column:1/-1;text-align:right}}
 
+/* Typography refinement: retain the existing layout and component styling. */
+body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+/* Five dashboard metrics; retain the existing two-column mobile treatment. */
+.dashboard-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1100px){.dashboard-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 </style>
 </head>
 <body>
@@ -131,6 +140,7 @@ body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8
     <div class="stat"><div class="stat-icon green">✓</div><span>Total Unit</span><strong id="statUnits">—</strong><small>Seluruh inventaris</small></div>
     <div class="stat"><div class="stat-icon orange">◷</div><span>Unit Tersedia</span><strong id="statAvailable">—</strong><small>Siap disewakan</small></div>
     <div class="stat"><div class="stat-icon violet">⌁</div><span>Perawatan</span><strong id="statMaintenance">—</strong><small>Perlu pemeriksaan</small></div>
+    <div class="stat"><div class="stat-icon purple">Rp</div><span>Total Revenue</span><strong id="statRevenue">—</strong><small>Pembayaran rental lunas</small></div>
    </div>
    <div class="dashboard-grid">
     <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p id="dashboardChartSubtitle">Jumlah transaksi dibuat · 7 hari terakhir</p></div><select id="dashboardPeriodSelect" class="dashboard-period-select" aria-label="Periode grafik rental"><option value="7">7 hari</option><option value="30">30 hari</option><option value="60">60 hari</option><option value="90">90 hari</option></select></div><div class="dashboard-chart-scroll"><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Memuat grafik rental…</div></div></div></div>
@@ -277,7 +287,7 @@ function resetWorkspace(){
  document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
  $('page-dashboard').classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.page==='dashboard'));
- $('statProducts').textContent='—';$('statUnits').textContent='—';$('statAvailable').textContent='—';$('statMaintenance').textContent='—';
+ $('statProducts').textContent='—';$('statUnits').textContent='—';$('statAvailable').textContent='—';$('statMaintenance').textContent='—';$('statRevenue').textContent='—';
  $('recentRows').innerHTML='<tr><td colspan="5">Memuat data…</td></tr>';
  $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
  $('rentalRows').innerHTML='<tr><td colspan="8">Memuat data…</td></tr>';
@@ -595,6 +605,16 @@ async function loadPayments(token=sessionRenderToken){
  if(error)throw error;
  if(token!==sessionRenderToken)return;
  paymentsCache=data||[];
+ // Revenue dashboard hanya menghitung pembayaran rental yang sudah terkonfirmasi lunas.
+ let revenueTotal=0;
+ for(let offset=0;;offset+=1000){
+  const {data:revenueRows,error:revenueError}=await db.from('payments').select('amount')
+   .eq('payment_type','rental').eq('payment_status','paid').range(offset,offset+999);
+  if(revenueError)throw revenueError;
+  revenueTotal+=(revenueRows||[]).reduce((sum,row)=>sum+Number(row.amount||0),0);
+  if(!revenueRows||revenueRows.length<1000)break;
+ }
+ if(token===sessionRenderToken)$('statRevenue').textContent=rupiah(revenueTotal);
  let correctionAuditByPayment=new Map();
  let voidAuditByPayment=new Map();
  if(['owner','admin'].includes(currentProfile?.role)){
