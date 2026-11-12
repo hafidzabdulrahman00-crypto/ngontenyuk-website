@@ -480,7 +480,7 @@ function paymentStatusLabel(status){
  return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan',voided:'Dibatalkan'})[status]||status;
 }
 function paymentMethodLabel(method){
- return ({cash:'Tunai',bank_transfer:'Transfer bank',qris_manual:'QRIS (manual)'})[method]||method||'—';
+ return ({cash:'Tunai',bank_transfer:'Transfer bank',qris_manual:'QRIS'})[method]||method||'—';
 }
 function paymentTotalsForRental(rentalId){
  const rows=paymentsCache.filter(p=>p.rental_id===rentalId&&p.payment_type==='rental');
