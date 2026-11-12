@@ -475,7 +475,7 @@ async function loadReports(){
  $('expenseRows').innerHTML=reportCache.expenses.map(x=>'<tr><td>'+safe(x.expense_date)+'</td><td>'+safe(x.category||'Lainnya')+'</td><td>'+safe(x.description)+'</td><td>'+rupiah(x.amount)+'</td></tr>').join('')||'<tr><td colspan="4" class="empty">Tidak ada pengeluaran pada periode ini.</td></tr>';
  $('incomeRows').innerHTML=reportCache.income.map(x=>'<tr><td>'+new Date(x.paid_at).toLocaleString('id-ID')+'</td><td>'+safe(x.rentals?.rental_code||'—')+'<br><span class="hint">'+safe(x.rentals?.customers?.name||'—')+'</span></td><td>'+rupiah(x.amount)+'</td><td>'+safe(paymentMethodLabel(x.payment_method))+'</td></tr>').join('')||'<tr><td colspan="4" class="empty">Belum ada penerimaan terkonfirmasi.</td></tr>';
 }
-function exportReportCsv(){if(!reportCache.period){showMsg('reportMsg','Muat laporan terlebih dahulu sebelum ekspor.','error');return;}const rows=[['Jenis','Tanggal','Referensi','Kategori/Metode','Nominal']];reportCache.income.forEach(x=>rows.push(['Penerimaan',x.paid_at,x.rentals?.rental_code||'',x.payment_method||'',Number(x.amount||0)]));reportCache.expenses.forEach(x=>rows.push(['Pengeluaran',x.expense_date,x.description||'',x.category||'',Number(x.amount||0)]));const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\\r\\n');const blob=new Blob(['\\uFEFF',csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ngontenyuk-laporan-'+reportCache.period.startLabel+'-'+reportCache.period.endLabel+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+function exportReportCsv(){if(!reportCache.period){showMsg('reportMsg','Muat laporan terlebih dahulu sebelum ekspor.','error');return;}const rows=[['Jenis','Tanggal','Referensi','Kategori/Metode','Nominal']];reportCache.income.forEach(x=>rows.push(['Penerimaan',x.paid_at,x.rentals?.rental_code||'',x.payment_method||'',Number(x.amount||0)]));reportCache.expenses.forEach(x=>rows.push(['Pengeluaran',x.expense_date,x.description||'',x.category||'',Number(x.amount||0)]));const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\uFEFF',csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ngontenyuk-laporan-'+reportCache.period.startLabel+'-'+reportCache.period.endLabel+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function paymentStatusLabel(status){
  return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan',voided:'Dibatalkan'})[status]||status;
 }
@@ -584,6 +584,7 @@ document.querySelector('.side').addEventListener('click',e=>{
  document.getElementById('page-'+page).classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el===nav));
  clearMsg('globalMsg');
+ if(page==='reviews')loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error'));
  if(page==='reports')loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error'));
 });
 $('loginForm').addEventListener('submit',async e=>{
