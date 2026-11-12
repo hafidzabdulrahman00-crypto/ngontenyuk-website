@@ -140,7 +140,7 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
     <div class="stat"><div class="stat-icon green">✓</div><span>Total Unit</span><strong id="statUnits">—</strong><small>Seluruh inventaris</small></div>
     <div class="stat"><div class="stat-icon orange">◷</div><span>Unit Tersedia</span><strong id="statAvailable">—</strong><small>Siap disewakan</small></div>
     <div class="stat"><div class="stat-icon violet">⌁</div><span>Perawatan</span><strong id="statMaintenance">—</strong><small>Perlu pemeriksaan</small></div>
-    <div class="stat"><div class="stat-icon purple">Rp</div><span>Total Revenue</span><strong id="statRevenue">—</strong><small>Pembayaran rental lunas</small></div>
+    <div class="stat"><div class="stat-icon purple">Rp</div><span>Total Revenue</span><strong id="statRevenue">—</strong><small id="statRevenueTrend">Membandingkan 30 hari terakhir</small></div>
    </div>
    <div class="dashboard-grid">
     <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p id="dashboardChartSubtitle">Jumlah transaksi dibuat · 7 hari terakhir</p></div><select id="dashboardPeriodSelect" class="dashboard-period-select" aria-label="Periode grafik rental"><option value="7">7 hari</option><option value="30">30 hari</option><option value="60">60 hari</option><option value="90">90 hari</option></select></div><div class="dashboard-chart-scroll"><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Memuat grafik rental…</div></div></div></div>
@@ -605,16 +605,44 @@ async function loadPayments(token=sessionRenderToken){
  if(error)throw error;
  if(token!==sessionRenderToken)return;
  paymentsCache=data||[];
- // Revenue dashboard hanya menghitung pembayaran rental yang sudah terkonfirmasi lunas.
- let revenueTotal=0;
- for(let offset=0;;offset+=1000){
-  const {data:revenueRows,error:revenueError}=await db.from('payments').select('amount')
-   .eq('payment_type','rental').eq('payment_status','paid').range(offset,offset+999);
-  if(revenueError)throw revenueError;
-  revenueTotal+=(revenueRows||[]).reduce((sum,row)=>sum+Number(row.amount||0),0);
-  if(!revenueRows||revenueRows.length<1000)break;
+ // Revenue dihitung dari pembayaran rental lunas; tren membandingkan dua periode 30 hari.
+ const revenueNow=new Date();
+ const revenueCurrentStart=new Date(revenueNow.getTime()-30*24*60*60*1000);
+ const revenuePreviousStart=new Date(revenueNow.getTime()-60*24*60*60*1000);
+ let revenueCurrent=0,revenuePrevious=0;
+ for(const [periodStart,periodEnd,target] of [
+  [revenueCurrentStart,revenueNow,'current'],
+  [revenuePreviousStart,revenueCurrentStart,'previous']
+ ]){
+  for(let offset=0;;offset+=1000){
+   const {data:revenueRows,error:revenueError}=await db.from('payments').select('amount')
+    .eq('payment_type','rental').eq('payment_status','paid')
+    .gte('paid_at',periodStart.toISOString()).lt('paid_at',periodEnd.toISOString())
+    .range(offset,offset+999);
+   if(revenueError)throw revenueError;
+   const subtotal=(revenueRows||[]).reduce((sum,row)=>sum+Number(row.amount||0),0);
+   if(target==='current')revenueCurrent+=subtotal;else revenuePrevious+=subtotal;
+   if(!revenueRows||revenueRows.length<1000)break;
+  }
  }
- if(token===sessionRenderToken)$('statRevenue').textContent=rupiah(revenueTotal);
+ if(token===sessionRenderToken){
+  $('statRevenue').textContent=rupiah(revenueCurrent);
+  const trend=$('statRevenueTrend');
+  if(trend){
+   if(revenuePrevious>0){
+    const change=((revenueCurrent-revenuePrevious)/revenuePrevious)*100;
+    const rounded=Math.abs(change).toFixed(1).replace('.',',');
+    trend.textContent=(change>0?'↑ Naik ':change<0?'↓ Turun ':'→ Tetap ')+rounded+'% · dibanding 30 hari sebelumnya';
+    trend.style.color=change>0?'#198754':change<0?'#c03952':'#77718a';
+   }else if(revenueCurrent>0){
+    trend.textContent='↑ Revenue baru tercatat · belum ada pembanding';
+    trend.style.color='#198754';
+   }else{
+    trend.textContent='Belum ada revenue dalam 30 hari terakhir';
+    trend.style.color='#77718a';
+   }
+  }
+ }
  let correctionAuditByPayment=new Map();
  let voidAuditByPayment=new Map();
  if(['owner','admin'].includes(currentProfile?.role)){
