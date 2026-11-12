@@ -60,6 +60,7 @@ th{background:#F7F3FF}
   <button class="nav" data-page="rentals">Kasir & Penyewaan<small>Transaksi COD dan jadwal rental</small></button>
   <a class="nav" href="./pos.html" style="display:block;text-decoration:none">POS Kasir<small>Kasir iPad & surat digital</small></a>
   <button class="nav" data-page="payments">Pembayaran<small>Tagihan dan riwayat cicilan</small></button>
+  <button class="nav" data-page="reviews">Review publik<small>Moderasi testimoni pelanggan</small></button>
   <button class="nav owner-only" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
   <button class="nav owner-only" data-page="product">Produk baru<small>Daftarkan model baru</small></button>
  </aside>
@@ -140,6 +141,10 @@ th{background:#F7F3FF}
     </form>
     <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kode rental</th><th>Pelanggan</th><th>Nominal</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="paymentRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
+  <section id="page-reviews" class="page hidden">
+   <div class="page-head"><div><h2>Review publik</h2><p>Review dari website masuk sebagai draft dan hanya tampil setelah disetujui petugas.</p></div><button class="btn secondary" id="reviewRefresh">Muat ulang</button></div>
+   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Rating</th><th>Komentar</th><th>Status & aksi</th></tr></thead><tbody id="reviewRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
   <section id="page-stock" class="page hidden">
    <div class="page-head"><div><h2>Tambah stok</h2><p>Tambahkan unit pada produk yang sudah terdaftar. Kode unit dibuat otomatis.</p></div></div>
    <div class="panel"><h3>Informasi stok masuk</h3>
@@ -186,7 +191,7 @@ const SUPABASE_URL = 'https://tyuylxmourtnajdireuc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
-let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], paymentsCache = [], sessionRenderToken = 0;
+let currentUser = null, currentProfile = null, productsCache = [], unitsCache = [], ratesCache = [], rentalsCache = [], paymentsCache = [], reviewsCache = [], sessionRenderToken = 0;
 let rentalSubmitting = false, pendingRmsRequest = null;
 const label = {available:'Tersedia',maintenance:'Perawatan',inactive:'Nonaktif',new:'Baru',good:'Baik',fair:'Cukup',damaged:'Rusak'};
 function showMsg(id,msg,type='info'){const el=$(id);el.textContent=msg;el.className='notice'+(type==='error'?' error':type==='success'?' success':'');}
@@ -198,14 +203,15 @@ function unitConditionOptions(value){return ['new','good','fair','damaged'].map(
 function connectors(arr){return Array.isArray(arr)&&arr.length?arr.map(safe).join(', '):'—';}
 function setView(session){$('loginView').classList.toggle('hidden',!!session);$('appView').classList.toggle('hidden',!session);$('logoutBtn').classList.toggle('hidden',!session);}
 function resetWorkspace(){
- currentProfile=null;productsCache=[];unitsCache=[];ratesCache=[];rentalsCache=[];paymentsCache=[];
+ currentProfile=null;productsCache=[];unitsCache=[];ratesCache=[];rentalsCache=[];paymentsCache=[];reviewsCache=[];
  document.querySelectorAll('.page').forEach(el=>el.classList.add('hidden'));
  $('page-dashboard').classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.page==='dashboard'));
  $('statProducts').textContent='—';$('statUnits').textContent='—';$('statAvailable').textContent='—';$('statMaintenance').textContent='—';
  $('recentRows').innerHTML='<tr><td colspan="5">Memuat data…</td></tr>';
  $('inventoryRows').innerHTML='<tr><td colspan="6">Memuat data…</td></tr>';
- $('rentalRows').innerHTML='<tr><td colspan="7">Memuat data…</td></tr>';
+ $('rentalRows').innerHTML='<tr><td colspan="8">Memuat data…</td></tr>';
+ $('reviewRows').innerHTML='<tr><td colspan="5">Masuk ke halaman Review untuk memuat data.</td></tr>';
  $('rentalUnit').innerHTML='<option value="">Pilih unit tersedia…</option>';
  $('paymentRental').innerHTML='<option value="">Pilih rental…</option>';
  $('paymentForm').reset();
@@ -423,6 +429,19 @@ async function loadRentals(token=sessionRenderToken){
  }).join('')||'<tr><td colspan="8" class="empty">Belum ada penyewaan.</td></tr>';
 }
 
+async function loadReviews(){
+ const {data,error}=await db.from('reviews')
+  .select('id,customer_name,rating,comment,is_published,created_at')
+  .order('created_at',{ascending:false}).limit(200);
+ if(error)throw error;
+ reviewsCache=data||[];
+ $('reviewRows').innerHTML=reviewsCache.map(r=>{
+  const action=r.is_published
+   ? '<button class="btn secondary" type="button" data-review-toggle="'+safe(r.id)+'" data-next="false">Sembunyikan</button>'
+   : '<button class="btn" type="button" data-review-toggle="'+safe(r.id)+'" data-next="true">Publikasikan</button>';
+  return '<tr><td>'+new Date(r.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r.customer_name)+'</b></td><td>'+('★'.repeat(Math.max(0,Math.min(5,Number(r.rating)||0))))+'</td><td style="min-width:220px;white-space:normal">'+safe(r.comment)+'</td><td><span class="tag '+(r.is_published?'green':'orange')+'">'+(r.is_published?'Tampil publik':'Menunggu moderasi')+'</span><br>'+action+'</td></tr>';
+ }).join('')||'<tr><td colspan="5" class="empty">Belum ada review masuk.</td></tr>';
+}
 function paymentStatusLabel(status){
  return ({pending:'Menunggu konfirmasi',paid:'Lunas',failed:'Gagal',refunded:'Dikembalikan',voided:'Dibatalkan'})[status]||status;
 }
@@ -567,6 +586,23 @@ $('logoutBtn').addEventListener('click',async()=>{
 });
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
+$('reviewRefresh').addEventListener('click',()=>loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error')));
+$('reviewRows').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-review-toggle]');
+ if(!button)return;
+ const review=reviewsCache.find(x=>x.id===button.dataset.reviewToggle);
+ if(!review)return;
+ button.disabled=true;
+ try{
+  const {error}=await db.from('reviews').update({is_published:button.dataset.next==='true'}).eq('id',review.id).select('id').single();
+  if(error)throw error;
+  showMsg('globalMsg',button.dataset.next==='true'?'Review berhasil dipublikasikan.':'Review disembunyikan dari website.','success');
+  await loadReviews();
+ }catch(err){
+  showMsg('globalMsg','Perubahan review gagal: '+(err.message||'Kesalahan tidak diketahui.'),'error');
+  button.disabled=false;
+ }
+});
 $('inventoryRows').addEventListener('change',async e=>{
  const control=e.target;
  const isStatus=control instanceof HTMLSelectElement&&control.dataset.unitStatus;
@@ -758,6 +794,7 @@ document.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>
  document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
  $('page-'+btn.dataset.page).classList.remove('hidden');
  if(btn.dataset.page==='rentals')Object.values(rmsSignatureCanvases).forEach(x=>x.resize());
+ if(btn.dataset.page==='reviews')loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error'));
 }));
 
 document.querySelectorAll('[data-clear-rms-signature]').forEach(button=>button.addEventListener('click',()=>clearRmsSignature(button.dataset.clearRmsSignature)));
