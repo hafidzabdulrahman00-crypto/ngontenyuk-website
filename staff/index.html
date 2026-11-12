@@ -395,7 +395,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))).order('created_at',{ascending:false}).limit(100);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name))').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
