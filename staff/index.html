@@ -35,6 +35,62 @@ th{background:#F7F3FF}
 .notice{background:#F1EAFE;color:#4c268e}
 .signature-card{border-radius:12px}
 
+
+/* Electric Purple dashboard layout */
+:root{--ny-deep:#351078;--ny-purple:#7136D9;--ny-lilac:#A17AF0;--ny-pale:#E9DEFF}
+body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8f6fd;color:#21143d}
+.shell{max-width:1480px;padding:18px 22px}
+.top{display:none}
+.layout{grid-template-columns:196px minmax(0,1fr);gap:0;background:#fff;border:1px solid #e8e0f5;border-radius:18px;overflow:hidden;box-shadow:0 12px 38px rgba(53,16,120,.12);min-height:calc(100vh - 36px)}
+.side{height:auto;min-height:100%;position:relative;top:auto;align-self:stretch;border:0;border-radius:0;background:linear-gradient(180deg,#351078,#29105e);padding:18px 12px;box-shadow:none}
+.side:before{content:"▷ NgontenYuk.co";font-size:16px;padding:9px 10px 30px;letter-spacing:-.4px}
+.nav{color:#e9deff;padding:12px 13px;margin:3px 0;border-radius:10px;font-size:13px}
+.nav small{font-size:10px;color:#c8b6ee;margin-top:2px}
+.nav.active,.nav:hover{background:linear-gradient(100deg,#7136D9,#824ce2);box-shadow:0 6px 16px #16063c55}
+.content{padding:0 26px 26px;background:linear-gradient(145deg,#fff 0%,#faf8ff 75%);min-width:0}
+.dashboard-toolbar{height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #f0ebf8;margin:0 -26px 22px;padding:0 26px;background:#ffffffb8}
+.dashboard-search{display:flex;align-items:center;gap:10px;width:min(560px,75%);border:1px solid #eee8f8;border-radius:99px;padding:9px 14px;color:#8a7da6;background:#fbfaff}
+.dashboard-search input{width:100%;border:0;outline:0;background:transparent;color:#21143d;font-size:12px}
+.dashboard-user{display:flex;align-items:center;gap:14px}
+.dashboard-bell{font-size:20px;color:#5c3aa0}
+.dashboard-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#7136D9;color:white;font-weight:750}
+.dashboard-heading{align-items:center;margin:0 0 18px}
+.dashboard-heading h2{font-size:27px;color:#351078}
+.dashboard-heading p{margin-top:2px;font-size:13px}
+.dashboard-stats{gap:12px;margin-bottom:18px}
+.dashboard-stats .stat{padding:15px 16px;min-height:136px;border-radius:14px}
+.dashboard-stats .stat span{display:block;font-size:12px;color:#625777;margin-top:9px}
+.dashboard-stats .stat strong{font-size:30px;color:#21143d;line-height:1.1;margin:5px 0}
+.dashboard-stats .stat small{font-size:10px;color:#8b819b}
+.stat-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-size:18px;font-weight:800}
+.stat-icon.purple{background:#efe5ff;color:#7136D9}.stat-icon.green{background:#e0f5e9;color:#219764}.stat-icon.orange{background:#fff0e5;color:#f07838}.stat-icon.violet{background:#eee7ff;color:#7c4be0}
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.95fr);gap:14px;align-items:stretch}
+.dashboard-grid .panel{margin:0;min-width:0}
+.dashboard-chart-panel,.dashboard-transactions{min-height:245px}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.panel-heading h3{margin:0;font-size:15px;color:#251444}
+.panel-heading p{font-size:11px;color:#897f9b;margin:3px 0 0}
+.dashboard-period{font-size:10px;color:#6d4ab1;background:#f1eaff;border-radius:99px;padding:6px 10px}
+.dashboard-chart{height:160px;display:flex;align-items:end;justify-content:space-around;gap:12px;padding:14px 8px 0;border-bottom:1px solid #eee8f6}
+.chart-col{height:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:7px;min-width:0}
+.chart-bar-wrap{height:118px;width:100%;display:flex;align-items:end;justify-content:center}
+.chart-bar{width:min(28px,70%);min-height:3px;border-radius:8px 8px 2px 2px;background:linear-gradient(180deg,#A17AF0,#7136D9);box-shadow:0 4px 10px #7136D933}
+.chart-label{font-size:10px;color:#786d8c}
+.chart-value{font-size:10px;color:#4d337e;font-weight:700}
+.chart-empty{font-size:11px;color:#9a91a8;text-align:center;width:100%;padding:48px 8px}
+.recent-transactions{display:flex;flex-direction:column}
+.recent-transaction{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #f0ebf7;font-size:11px}
+.recent-transaction:last-child{border-bottom:0}
+.recent-transaction b{display:block;color:#35205d;font-size:11px;overflow-wrap:anywhere}
+.recent-transaction small{display:block;color:#8d839d;font-size:10px;margin-top:3px}
+.recent-transaction .tag{white-space:nowrap}
+.recent-amount{font-weight:750;color:#30204e;white-space:nowrap}
+.text-link{border:0;background:transparent;color:#7136D9;font-size:11px;font-weight:700;cursor:pointer;padding:5px}
+.dashboard-inventory-panel{margin-top:14px}
+.dashboard-inventory-panel .panel-heading{margin-bottom:8px}
+@media(max-width:900px){.shell{padding:10px}.layout{grid-template-columns:1fr}.side{min-height:0;display:flex;overflow:auto;gap:4px;padding:8px}.side:before{display:none}.nav{flex:0 0 auto;width:auto}.nav small{display:none}.content{padding:0 16px 18px}.dashboard-toolbar{margin:0 -16px 18px;padding:0 16px}.dashboard-grid{grid-template-columns:1fr}.dashboard-chart-panel,.dashboard-transactions{min-height:0}}
+@media(max-width:560px){.shell{padding:0}.layout{border-radius:0;min-height:100vh}.content{padding:0 12px 16px}.dashboard-toolbar{margin:0 -12px 14px;padding:0 12px;height:52px}.dashboard-search{width:78%}.dashboard-heading h2{font-size:22px}.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dashboard-stats .stat{min-height:124px;padding:12px}.dashboard-stats .stat strong{font-size:25px}.panel{padding:14px}.recent-transaction{grid-template-columns:minmax(0,1fr) auto;gap:7px}.recent-amount{grid-column:1/-1;text-align:right}}
+
 </style>
 </head>
 <body>
@@ -67,15 +123,20 @@ th{background:#F7F3FF}
  </aside>
  <main class="content">
   <div id="globalMsg" class="notice hidden" role="status" aria-live="polite"></div>
-  <section id="page-dashboard" class="page">
-   <div class="page-head"><div><h2>Ringkasan</h2><p>Ikhtisar data operasional NgontenYuk.co.</p></div><button class="btn secondary" id="refreshBtn">Muat ulang</button></div>
-   <div class="stats">
-    <div class="stat"><span>Total produk aktif</span><strong id="statProducts">—</strong></div>
-    <div class="stat"><span>Total unit</span><strong id="statUnits">—</strong></div>
-    <div class="stat"><span>Unit tersedia</span><strong id="statAvailable">—</strong></div>
-    <div class="stat"><span>Sedang perawatan</span><strong id="statMaintenance">—</strong></div>
+  <section id="page-dashboard" class="page dashboard-page">
+   <div class="dashboard-toolbar"><div class="dashboard-search">⌕ <input id="dashboardSearch" type="search" placeholder="Cari transaksi, pelanggan, atau unit…" aria-label="Cari transaksi, pelanggan, atau unit"></div><div class="dashboard-user"><span class="dashboard-bell">♧</span><span class="dashboard-avatar" id="dashboardAvatar">NY</span></div></div>
+   <div class="page-head dashboard-heading"><div><h2>Dashboard</h2><p>Ringkasan aktivitas NgontenYuk.co</p></div><button class="btn secondary" id="refreshBtn">↻ Muat ulang</button></div>
+   <div class="stats dashboard-stats">
+    <div class="stat"><div class="stat-icon purple">▣</div><span>Produk Aktif</span><strong id="statProducts">—</strong><small>Model microphone</small></div>
+    <div class="stat"><div class="stat-icon green">✓</div><span>Total Unit</span><strong id="statUnits">—</strong><small>Seluruh inventaris</small></div>
+    <div class="stat"><div class="stat-icon orange">◷</div><span>Unit Tersedia</span><strong id="statAvailable">—</strong><small>Siap disewakan</small></div>
+    <div class="stat"><div class="stat-icon violet">⌁</div><span>Perawatan</span><strong id="statMaintenance">—</strong><small>Perlu pemeriksaan</small></div>
    </div>
-   <div class="panel"><h3>Unit terbaru</h3><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th></tr></thead><tbody id="recentRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="dashboard-grid">
+    <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p>Jumlah transaksi dibuat · 7 hari terakhir</p></div><span class="dashboard-period">7 hari</span></div><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Grafik akan muncul setelah data rental tersedia.</div></div></div>
+    <div class="panel dashboard-transactions"><div class="panel-heading"><h3>Transaksi Terbaru</h3><button class="text-link" type="button" data-page="rentals">Lihat Semua →</button></div><div class="recent-transactions" id="recentRentalRows"><div class="chart-empty">Memuat transaksi…</div></div></div>
+   </div>
+   <div class="panel dashboard-inventory-panel"><div class="panel-heading"><h3>Unit Terbaru</h3><button class="text-link" type="button" data-page="inventory">Lihat Inventaris →</button></div><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Kondisi</th><th>Status</th></tr></thead><tbody id="recentRows"><tr><td colspan="5">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-inventory" class="page hidden">
    <div class="page-head"><div><h2>Inventaris</h2><p>Semua unit yang tercatat di database.</p></div><button class="btn secondary" id="inventoryRefresh">Muat ulang</button></div>
@@ -417,6 +478,7 @@ async function loadRentals(token=sessionRenderToken){
  const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(100);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
+ renderDashboardInsights();
  $('rentalRows').innerHTML=rentalsCache.map(x=>{
   const legacy=new Date(x.created_at).getTime()<Date.parse('2026-11-12T03:36:18Z');
   const complete=legacy?(x.identity_verified&&x.agreement_signed&&x.guarantee_explained):(x.identity_verified&&['KTP','KTM'].includes(x.identity_document_type)&&!!x.identity_verified_at&&x.agreement_signed&&!!x.tenant_signature_data&&!!x.staff_signature_data&&!!x.agreement_signed_at&&x.guarantee_explained&&!!x.guarantee_explained_at);
@@ -443,6 +505,29 @@ async function loadRentals(token=sessionRenderToken){
     : (x.status==='completed'?'Data pengembalian lama':'Belum dikembalikan'))+'</td>'+
    '<td>'+pdfAction+'</td></tr>';
  }).join('')||'<tr><td colspan="8" class="empty">Belum ada penyewaan.</td></tr>';
+}
+
+
+function renderDashboardInsights(){
+ const rows=rentalsCache||[];
+ const host=$('recentRentalRows');
+ if(host){
+  host.innerHTML=rows.slice(0,5).map(x=>{
+   const statusLabel=({reserved:'Reserved',active:'Aktif',completed:'Selesai',cancelled:'Dibatalkan',overdue:'Terlambat'})[x.status]||x.status||'—';
+   const tone=['completed'].includes(x.status)?'green':(['cancelled','overdue'].includes(x.status)?'orange':'');
+   return '<div class="recent-transaction"><div><b>'+safe(x.rental_code||'Rental')+'</b><small>'+safe(x.customers?.name||'Pelanggan')+' · '+safe(x.units?.unit_code||'—')+'</small></div><span class="tag '+tone+'">'+safe(statusLabel)+'</span><span class="recent-amount">'+rupiah(x.rental_price)+'</span></div>';
+  }).join('')||'<div class="chart-empty">Belum ada transaksi rental.</div>';
+ }
+ const chart=$('dashboardChart');
+ if(chart){
+  const now=new Date();const days=[];
+  for(let n=6;n>=0;n--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-n);days.push(d);}
+  const counts=days.map(d=>rows.filter(x=>{const t=new Date(x.created_at);return t.getFullYear()===d.getFullYear()&&t.getMonth()===d.getMonth()&&t.getDate()===d.getDate();}).length);
+  const max=Math.max(1,...counts);
+  chart.innerHTML=days.map((d,i)=>'<div class="chart-col"><span class="chart-value">'+counts[i]+'</span><div class="chart-bar-wrap"><div class="chart-bar" style="height:'+Math.max(3,counts[i]/max*100)+'%"></div></div><span class="chart-label">'+['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]+'</span></div>').join('');
+ }
+ const avatar=$('dashboardAvatar');
+ if(avatar&&currentProfile?.full_name)avatar.textContent=currentProfile.full_name.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
 }
 
 async function loadReviews(){
