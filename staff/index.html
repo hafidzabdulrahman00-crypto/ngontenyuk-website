@@ -435,7 +435,7 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
  line('Mulai sewa',fmt(rental.start_at));line('Selesai sewa',fmt(rental.end_at));
  line('Durasi',details.duration+' jam');line('Harga sewa',rupiah(rental.rental_price));
  line('Jenis identitas',details.identity||'KTP/KTM');
- line('Jaminan identitas','Dokumen identitas asli diterima sebagai jaminan selama masa penyewaan dan dikembalikan setelah masa sewa berakhir serta seluruh kewajiban penyewa diselesaikan');
+ line('Jaminan identitas','Dokumen identitas asli (KTP/KTM) ditahan sementara oleh petugas NgontenYuk.co sebagai jaminan selama masa penyewaan. Dokumen dikembalikan setelah masa sewa berakhir, unit beserta seluruh kelengkapannya telah dikembalikan, dan seluruh kewajiban penyewa diselesaikan.');
  y+=3;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('KETENTUAN PENYEWAAN',left,y);y+=7;
  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
  const terms=[
@@ -443,7 +443,7 @@ function makeRmsAgreementPdf(rental,tenantSig,staffSig,details){
   '2. Unit dikembalikan pada waktu dan tempat yang telah disepakati.',
   '3. Kondisi serta kelengkapan unit diperiksa bersama saat pengembalian.',
   '4. Penanganan keterlambatan atau kerusakan mengikuti ketentuan sewa yang telah dijelaskan dan disetujui para pihak.',
-  '5. Penyewa wajib menyerahkan dokumen identitas asli kepada pihak NgontenYuk.co sebagai jaminan selama masa penyewaan. Dokumen akan dikembalikan setelah masa sewa berakhir dan seluruh kewajiban penyewa telah diselesaikan.',
+  '5. Penyewa menyerahkan dokumen identitas asli (KTP/KTM) untuk ditahan sementara oleh petugas NgontenYuk.co sebagai jaminan selama masa penyewaan. Dokumen identitas akan dikembalikan setelah masa sewa berakhir, unit beserta seluruh kelengkapannya telah dikembalikan, dan seluruh kewajiban penyewa diselesaikan.',
   '6. Kedua pihak menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan dalam surat perjanjian ini.'
  ];
  for(const term of terms){const lines=doc.splitTextToSize(term,w-32);if(y+lines.length*4.5>245){doc.addPage();y=20;}doc.text(lines,left,y);y+=lines.length*4.5+3;}
