@@ -150,7 +150,7 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
   </section>
   <section id="page-inventory" class="page hidden">
    <div class="page-head"><div><h2>Inventaris</h2><p>Semua unit yang tercatat di database.</p></div><button class="btn secondary" id="inventoryRefresh">Muat ulang</button></div>
-   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Status operasional</th><th>Kondisi</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Kode unit</th><th>Produk</th><th>Konektor</th><th>Status operasional</th><th>Kondisi</th><th>Catatan</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="9">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-rentals" class="page hidden">
    <div class="page-head"><div><h2>Kasir & Penyewaan</h2><p>Input produk, jadwal, verifikasi persyaratan, dan pembayaran COD dari satu halaman.</p></div><button class="btn secondary" id="rentalRefresh">Muat ulang</button></div>
@@ -177,7 +177,7 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
      <div class="actions"><button class="btn" type="submit">Simpan penyewaan</button></div><div id="rentalMsg" class="notice hidden"></div>
     </form>
    </div>
-   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th><th>Pengembalian</th><th>PDF perjanjian</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Daftar penyewaan</h3><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Unit</th><th>Jadwal</th><th>Tarif</th><th>Persyaratan</th><th>Status</th><th>Jaminan identitas</th><th>Pengembalian</th><th>PDF perjanjian</th></tr></thead><tbody id="rentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-payments" class="page hidden">
    <div class="page-head"><div><h2>Pembayaran</h2><p>Catat pembayaran bertahap dan pantau sisa tagihan rental.</p></div><button class="btn secondary" id="paymentRefresh">Muat ulang</button></div>
@@ -485,7 +485,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_deposit_status,identity_received_at,identity_returned_at,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  renderDashboardInsights();
@@ -510,11 +510,12 @@ async function loadRentals(token=sessionRenderToken){
    '<span class="tag '+(x.guarantee_explained?'green':'orange')+'">'+(x.guarantee_explained?'Garansi dijelaskan':'Garansi belum dijelaskan')+'</span></td>'+
    '<td><b>'+(complete?'Persyaratan lengkap':'Menunggu verifikasi')+'</b><br><span class="hint">Status rental</span><br>'+
    '<select class="status-select" data-rental-status="'+safe(x.id)+'" '+(canChange?'':'disabled')+'>'+rentalStatusOptions(x.status,complete)+'</select></td>'+
+   '<td><b>'+(x.identity_deposit_status==='held'?'Dokumen diterima':x.identity_deposit_status==='returned'?'Dokumen dikembalikan':'Belum tercatat')+'</b><br><span class="hint">'+safe(x.identity_document_type||'KTP/KTM')+'</span>'+(x.identity_received_at?'<br><span class="hint">Diterima: '+new Date(x.identity_received_at).toLocaleString('id-ID')+'</span>':'')+(x.identity_returned_at?'<br><span class="hint">Dikembalikan: '+new Date(x.identity_returned_at).toLocaleString('id-ID')+'</span>':'')+'</td>'+
    '<td>'+(x.rental_returns&&x.rental_returns.length
     ? '<b>'+safe(label[x.rental_returns[0].return_condition]||x.rental_returns[0].return_condition)+'</b><br><span class="hint">'+new Date(x.rental_returns[0].returned_at).toLocaleString('id-ID')+'</span>'+(x.rental_returns[0].notes?'<br><span class="hint">'+safe(x.rental_returns[0].notes)+'</span>':'')
     : (x.status==='completed'?'Data pengembalian lama':'Belum dikembalikan'))+'</td>'+
    '<td>'+pdfAction+'</td></tr>';
- }).join('')||'<tr><td colspan="8" class="empty">Belum ada penyewaan.</td></tr>';
+ }).join('')||'<tr><td colspan="9" class="empty">Belum ada penyewaan.</td></tr>';
 }
 
 
