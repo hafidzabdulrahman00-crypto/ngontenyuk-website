@@ -62,6 +62,12 @@ a{color:#7136D9}
 <p class="hint" id="paymentHint">Tunai dicatat lunas setelah diterima. Transfer bank dan QRIS menunggu verifikasi dana masuk oleh petugas berwenang.</p>
 <div id="qrisPanel" class="panel hidden" style="margin-top:14px;background:#faf8fd">
 <h3>QRIS NgontenYuk.co</h3>
+<div id="qrisDynamic" class="panel hidden" style="display:grid;gap:10px;justify-items:center;padding:14px;border:1px solid #cdebd8;border-radius:14px;background:#f4fff7;margin-bottom:12px">
+<strong>QRIS dinamis Midtrans</strong>
+<img id="qrisDynamicImage" alt="QRIS dinamis untuk transaksi ini" style="display:block;width:min(100%,360px);height:auto;max-height:440px;object-fit:contain;border-radius:10px;background:#fff">
+<p id="qrisDynamicInfo" class="hint"></p>
+<a id="qrisDynamicLink" target="_blank" rel="noopener noreferrer">Buka QRIS di tab baru</a>
+</div>
 <div id="manualQris" style="display:grid;gap:10px;justify-items:center;padding:14px;border:1px solid #e9e3f4;border-radius:14px;background:#fff">
 <strong>QRIS NgontenYuk.co</strong>
 <img src="https://drive.google.com/uc?export=view&id=1QzUoKKugKk_6wMTUgvWqPDXT2Zvhz9_y" alt="QRIS NgontenYuk.co" style="display:block;width:min(100%,360px);height:auto;max-height:440px;object-fit:contain;border:0;border-radius:10px;background:#fff" loading="eager" referrerpolicy="no-referrer" onerror="this.hidden=true;document.getElementById('qrisFallback').hidden=false"><p id="qrisFallback" class="hint" hidden>Gambar QRIS tidak dapat dimuat. Gunakan tautan buka gambar QRIS di bawah.</p>
@@ -184,6 +190,25 @@ function buildAgreementPdf(rental,tenantSig,staffSig,details){
  doc.setFontSize(8);
  doc.text('Waktu pembuatan dokumen: '+new Date().toLocaleString('id-ID'),left,y);
  return doc.output('blob');
+}
+async function createDynamicQris(rows){
+ const paymentIds=rows.map(row=>row.payment_id).filter(Boolean);
+ if(!paymentIds.length)throw new Error('ID pembayaran tidak tersedia untuk membuat QRIS.');
+ const {data,error}=await db.functions.invoke('midtrans-create-qris',{body:{payment_ids:paymentIds}});
+ if(error)throw new Error(error.message||'Midtrans tidak dapat membuat QRIS.');
+ const qrUrl=String(data?.qr_url||'');
+ let parsed;
+ try{parsed=new URL(qrUrl);}catch{throw new Error('Midtrans mengembalikan tautan QRIS yang tidak valid.');}
+ if(parsed.protocol!=='https:')throw new Error('Tautan QRIS harus menggunakan HTTPS.');
+ $('qrisDynamicImage').src=parsed.href;
+ $('qrisDynamicLink').href=parsed.href;
+ const expires=data?.expires_at?new Date(data.expires_at):null;
+ $('qrisDynamicInfo').textContent='Nominal '+money(data.amount||0)+
+  (expires&&!Number.isNaN(expires.getTime())?' · Berlaku sampai '+expires.toLocaleString('id-ID'):'')+
+  '. Pembayaran akan lunas otomatis setelah notifikasi resmi Midtrans terverifikasi.';
+ $('qrisDynamic').classList.remove('hidden');
+ $('manualQris').classList.add('hidden');
+ return data;
 }
 async function saveRentalAgreements(rows,tenantSig,staffSig,details){
  for(const rental of rows){
@@ -348,7 +373,19 @@ $('checkout').addEventListener('click',async()=>{
    pendingCheckout.details
   );
 
-
+  let qrisCreated=false;
+  let qrisWarning='';
+  if(pendingCheckout.paymentMethod==='qris_manual'){
+   try{
+    await createDynamicQris(pendingCheckout.rentals);
+    qrisCreated=true;
+   }catch(qrisError){
+    qrisWarning=' QRIS dinamis belum berhasil dibuat: '+(qrisError.message||'Kesalahan Midtrans tidak diketahui.')+
+     ' Pembayaran tetap berstatus menunggu. Jangan tandai lunas sebelum dana benar-benar diterima.';
+    $('qrisDynamic').classList.add('hidden');
+    $('manualQris').classList.remove('hidden');
+   }
+  }
 
   const completed=pendingCheckout;
   created=completed.rentals;
@@ -357,7 +394,7 @@ $('checkout').addEventListener('click',async()=>{
    'Transaksi berhasil dibuat untuk '+completed.rentals.length+
    ' unit. Total '+money(completed.total)+
    '. Semua PDF per rental berhasil disimpan. '+
-   (completed.paymentMethod==='cash'?'Pembayaran tunai tercatat lunas.':completed.paymentMethod==='qris_manual'?'QRIS ditampilkan; pembayaran menunggu verifikasi dana masuk.':'Pembayaran menunggu verifikasi dana masuk.'),
+   (completed.paymentMethod==='cash'?'Pembayaran tunai tercatat lunas.':completed.paymentMethod==='qris_manual'?(qrisCreated?'QRIS dinamis berhasil dibuat; pembayaran menunggu konfirmasi resmi Midtrans.':'QRIS dinamis gagal dibuat; gunakan metode pembayaran lain atau periksa QRIS manual.'): 'Pembayaran menunggu verifikasi dana masuk.')+qrisWarning,
    'success'
   );
   selectedUnits=[];
