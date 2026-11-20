@@ -1266,7 +1266,6 @@
     var API = "";
     var SUPABASE_URL = "https://tyuylxmourtnajdireuc.supabase.co";
     var SUPABASE_PUBLIC_KEY = "sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl";
-    var CATALOG_REQUEST_URL = SUPABASE_URL + "/functions/v1/catalog-rental-request";
     var SPOTS = ["Area kos", "Muladi Dome", "FEB Undip"];
 
     // Foto permanen disimpan di folder assets/products/ pada root website.
@@ -1719,50 +1718,53 @@
       );
     }
 
-    async function sendOrder() {
+    function sendOrder() {
       var t = $("o_t").value, n = $("o_n").value.trim(), phone = $("o_phone").value.trim(), m = $("o_m");
-      if (DU < 0) { m.textContent = "Pilih durasi sewa terlebih dahulu."; return; }
+      if (DU < 0 || !CUR || !CUR.prices || !CUR.prices[DU]) { m.textContent = "Pilih durasi sewa terlebih dahulu."; return; }
       if (!t) { m.textContent = "Isi tanggal dan jam mulai sewa."; return; }
       if (!n || n.length < 2) { m.textContent = "Isi nama pemesan."; return; }
       if (!phone || phone.replace(/[^0-9]/g, "").length < 9) { m.textContent = "Isi nomor WhatsApp yang valid."; return; }
-      if (!CUR || !CUR.productId || !CUR.id) { m.textContent = "Data unit CRM belum siap. Muat ulang katalog."; return; }
+
       var p = CUR.prices[DU], startAt = new Date(t);
-      if (!Number.isFinite(startAt.getTime()) || startAt.getTime() < Date.now() - 120000) { m.textContent = "Waktu mulai harus sekarang atau di masa mendatang."; return; }
-      var button = document.querySelector('[data-send="1"]');
-      if (button) { button.disabled = true; button.textContent = "Mengirim ke CRM…"; }
-      m.textContent = "Memeriksa unit dan jadwal di CRM…";
-      try {
-        var response = await fetch(CATALOG_REQUEST_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": SUPABASE_PUBLIC_KEY,
-            "Authorization": "Bearer " + SUPABASE_PUBLIC_KEY
-          },
-          body: JSON.stringify({
-            customer_name: n,
-            customer_phone: phone,
-            product_id: CUR.productId,
-            unit_id: CUR.id,
-            duration_hours: Number(String(p[0]).match(/\d+/)[0]),
-            start_at: startAt.toISOString(),
-            pickup_location: $("o_p").value,
-            notes: $("o_c").value.trim(),
-            website: ""
-          })
-        });
-        var result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.error || "Permintaan belum berhasil disimpan.");
-        m.style.color = "var(--ok)";
-        m.textContent = "Berhasil masuk CRM! Kode: " + (result.request_code || "tercatat") + ". Admin akan menghubungi melalui WhatsApp.";
-        if (button) { button.textContent = "Permintaan Terkirim ✓"; }
-        var waText = "Halo NgontenYuk.co, saya baru mengirim permintaan sewa melalui katalog. Kode: " + (result.request_code || "-") + ". Mohon konfirmasi ketersediaan dan langkah selanjutnya.";
-        window.open("https://wa.me/" + WA + "?text=" + encodeURIComponent(waText), "_blank", "noopener");
-      } catch (error) {
-        m.style.color = "var(--bad)";
-        m.textContent = error.message || "Terjadi kesalahan saat mengirim permintaan.";
-        if (button) { button.disabled = false; button.textContent = "Coba Kirim Lagi"; }
+      if (!Number.isFinite(startAt.getTime()) || startAt.getTime() < Date.now() - 120000) {
+        m.textContent = "Waktu mulai harus sekarang atau di masa mendatang.";
+        return;
       }
+
+      var durationHours = Number(String(p[0]).match(/\d+/)[0]);
+      var endAt = new Date(startAt.getTime() + durationHours * 60 * 60 * 1000);
+      var dateOptions = { day: "2-digit", month: "long", year: "numeric" };
+      var timeOptions = { hour: "2-digit", minute: "2-digit", hour12: false };
+      var formatDateTime = function (date) {
+        return date.toLocaleDateString("id-ID", dateOptions) + " pukul " +
+          date.toLocaleTimeString("id-ID", timeOptions).replace(".", ":") + " WIB";
+      };
+      var note = $("o_c").value.trim();
+      var waText = [
+        "Halo Admin NgontenYuk.co, saya ingin melakukan pemesanan sewa microphone.",
+        "",
+        "*DETAIL PEMESANAN*",
+        "Nama pemesan: " + n,
+        "Nomor WhatsApp: " + phone,
+        "Microphone: " + CUR.name + (CUR.tag ? " (" + CUR.tag + ")" : ""),
+        "Kode unit: " + (CUR.unitCode || "-"),
+        "Durasi sewa: " + p[0],
+        "Tanggal & jam mulai: " + formatDateTime(startAt),
+        "Estimasi selesai: " + formatDateTime(endAt),
+        "Titik temu (COD): " + $("o_p").value,
+        "Estimasi biaya: " + rp(p[1]),
+        "Catatan: " + (note || "-"),
+        "",
+        "Mohon konfirmasi ketersediaan unit dan langkah selanjutnya. Terima kasih."
+      ].join("\n");
+
+      var waUrl = "https://wa.me/" + WA + "?text=" + encodeURIComponent(waText);
+      m.style.color = "var(--ok)";
+      m.innerHTML = 'Format pemesanan siap dikirim melalui WhatsApp. Jika WhatsApp tidak terbuka otomatis, <a href="' +
+        waUrl + '" target="_blank" rel="noopener noreferrer" style="color:var(--pu);text-decoration:underline">klik di sini untuk membuka WhatsApp</a>.';
+      var button = document.querySelector('[data-send="1"]');
+      if (button) button.textContent = "Buka WhatsApp ✓";
+      window.open(waUrl, "_blank");
     }
 
     // Akses staf hanya melalui Staff RMS dengan Supabase Auth.
