@@ -613,7 +613,7 @@ function paymentTotalsForRental(rentalId){
  const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
  const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
  const rental=rentalsCache.find(r=>r.id===rentalId);
- const due=Math.max(0,Number(rental?.rental_price||0)-Number(rental?.discount_amount||0));
+ const due=Math.max(0,Math.min(Number(rental?.rental_price||0),Number(rental?.original_rental_price??rental?.rental_price??0)-Number(rental?.discount_amount||0)));
  return {paid,pending,due,remaining:Math.max(0,due-paid-pending),outstanding:Math.max(0,due-paid)};
 }
 function updatePaymentQuote(){
@@ -693,7 +693,7 @@ async function loadPayments(token=sessionRenderToken){
   const rows=paymentByRental.get(r.id)||[];
   const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
   const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
-  const due=Math.max(0,Number(r.rental_price||0)-Number(r.discount_amount||0));
+  const due=Math.max(0,Math.min(Number(r.rental_price||0),Number(r.original_rental_price??r.rental_price??0)-Number(r.discount_amount||0)));
   return {r,paid,pending,due,remaining:Math.max(0,due-paid)};
  });
  const totalPaid=summaries.reduce((n,x)=>n+x.paid,0);
