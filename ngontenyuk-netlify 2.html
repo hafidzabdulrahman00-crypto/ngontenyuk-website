@@ -1823,7 +1823,7 @@
     staffPinForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       var pin = staffPinInput.value.trim();
-      if (!/^\\d{6}$/.test(pin)) {
+      if (!/^\d{6}$/.test(pin)) {
         staffPinMessage.textContent = "Masukkan PIN yang terdiri dari 6 angka.";
         return;
       }
