@@ -199,7 +199,7 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
      <div class="actions"><button class="btn" type="submit">Simpan pembayaran</button></div><div id="paymentMsg" class="notice hidden"></div>
     </form>
    </div>
-   <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Harga rental</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Tagihan akhir / diskon</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
    <div class="panel"><h3>Riwayat pembayaran</h3>
     <form id="paymentCorrectionForm" class="hidden" style="margin:0 0 18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#faf8fd">
      <h4 style="margin:0 0 12px">Koreksi nominal pembayaran</h4>
@@ -472,7 +472,7 @@ async function saveRmsAgreement(rental,tenantSig,staffSig,details){
  if(pathError)throw new Error('PDF terunggah, tetapi path gagal dicatat: '+pathError.message);
 }
 async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaffSig=null){
- const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,unit_id,identity_document_type,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
+ const {data:rental,error}=await db.from('rentals').select('id,rental_code,start_at,end_at,rental_price,original_rental_price,discount_amount,discount_reason,unit_id,identity_document_type,tenant_signature_data,staff_signature_data,customers(name,phone),units(unit_code,products(name))').eq('id',rentalId).single();
  if(error)throw error;
  const tenantSig=rental.tenant_signature_data||suppliedTenantSig;
  const staffSig=rental.staff_signature_data||suppliedStaffSig;
@@ -491,7 +491,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,original_rental_price,discount_amount,discount_reason,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  renderDashboardInsights();
@@ -510,7 +510,7 @@ async function loadRentals(token=sessionRenderToken){
    '<td>'+safe(x.customers?.name)+'<br><span class="hint">'+safe(x.customers?.phone)+'</span></td>'+
    '<td>'+safe(x.units?.unit_code)+'<br><span class="hint">'+safe(x.units?.products?.name)+'</span></td>'+
    '<td>'+new Date(x.start_at).toLocaleString('id-ID')+'<br><span class="hint">s.d. '+new Date(x.end_at).toLocaleString('id-ID')+'</span></td>'+
-   '<td>'+rupiah(x.rental_price)+'</td>'+
+   '<td>'+(Number(x.discount_amount||0)>0?'<span class="hint">Awal '+rupiah(x.original_rental_price??x.rental_price)+'</span><br><span class="hint">Diskon −'+rupiah(x.discount_amount)+'</span><br><b>'+rupiah(x.rental_price)+'</b>':'<b>'+rupiah(x.rental_price)+'</b>')+'</td>'+
    '<td><span class="tag '+(complete?'green':'orange')+'">'+(x.identity_verified?'Identitas '+safe(x.identity_document_type||''):'Identitas belum diverifikasi')+'</span><br>'+
    '<span class="tag '+(x.agreement_signed&&x.tenant_signature_data&&x.staff_signature_data?'green':'orange')+'">'+(x.agreement_signed&&x.tenant_signature_data&&x.staff_signature_data?'Dua tanda tangan tersimpan':'Tanda tangan belum lengkap')+'</span><br>'+
    '<span class="tag '+(x.guarantee_explained?'green':'orange')+'">'+(x.guarantee_explained?'Garansi dijelaskan':'Garansi belum dijelaskan')+'</span></td>'+
