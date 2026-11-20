@@ -234,7 +234,21 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
      <div class="actions"><button class="btn" type="submit">Simpan pembayaran</button></div><div id="paymentMsg" class="notice hidden"></div>
     </form>
    </div>
-   <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Harga rental</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="6">Memuat data…</td></tr></tbody></table></div></div>
+   <div class="panel owner-only" id="rentalDiscountPanel">
+    <h3>Atur diskon rental</h3>
+    <p class="hint">Diskon disimpan terpisah dari pembayaran. Nominal pembayaran yang sudah masuk tidak diubah. Hanya Owner/Admin yang dapat mengatur diskon.</p>
+    <form id="rentalDiscountForm">
+     <div class="form-grid">
+      <div class="field full"><label for="discountRental">Transaksi rental</label><select id="discountRental" required><option value="">Pilih rental…</option></select></div>
+      <div class="field"><label for="discountAmount">Nominal diskon (Rp)</label><input id="discountAmount" type="number" min="0" step="1" required placeholder="Contoh: 5000"></div>
+      <div class="field"><label for="discountReason">Alasan diskon</label><input id="discountReason" maxlength="200" placeholder="Contoh: Diskon manual"></div>
+     </div>
+     <div class="notice" id="discountQuote">Pilih rental untuk melihat harga dan diskon saat ini.</div>
+     <div class="actions"><button class="btn" id="discountSubmit" type="submit">Simpan diskon</button><button class="btn ghost" id="discountClear" type="button">Hapus diskon</button></div>
+     <div id="discountMsg" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="panel"><h3>Ringkasan tagihan rental</h3><div class="table-wrap"><table><thead><tr><th>Kode rental</th><th>Pelanggan</th><th>Harga awal / diskon</th><th>Tagihan akhir</th><th>Sudah dibayar</th><th>Menunggu</th><th>Sisa belum lunas</th></tr></thead><tbody id="paymentRentalRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
    <div class="panel"><h3>Riwayat pembayaran</h3>
     <form id="paymentCorrectionForm" class="hidden" style="margin:0 0 18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#faf8fd">
      <h4 style="margin:0 0 12px">Koreksi nominal pembayaran</h4>
@@ -521,7 +535,7 @@ async function recoverRmsAgreement(rentalId,suppliedTenantSig=null,suppliedStaff
  await loadRentals();
 }
 async function loadRentals(token=sessionRenderToken){
- const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
+ const {data,error}=await db.from('rentals').select('id,rental_code,created_at,start_at,end_at,rental_price,original_rental_price,discount_amount,discount_reason,status,identity_verified,identity_document_type,identity_verified_at,agreement_signed,agreement_signed_at,guarantee_explained,guarantee_explained_at,tenant_signature_data,staff_signature_data,agreement_pdf_path,agreement_pdf_created_at,customers(name,phone),units(unit_code,products(name)),rental_returns(return_condition,notes,returned_at)').order('created_at',{ascending:false}).limit(1000);
  if(error)throw error;if(token!==sessionRenderToken)return;
  rentalsCache=data||[];
  renderDashboardInsights();
@@ -619,19 +633,34 @@ function paymentStatusLabel(status){
 function paymentMethodLabel(method){
  return ({cash:'Tunai',bank_transfer:'Transfer bank',qris_manual:'QRIS'})[method]||method||'—';
 }
+function rentalAmountDue(rental){
+ if(!rental)return 0;
+ const base=Number(rental.original_rental_price??rental.rental_price??0);
+ const discount=Math.max(0,Number(rental.discount_amount||0));
+ return Math.max(0,Math.min(Number(rental.rental_price||0),base-discount));
+}
 function paymentTotalsForRental(rentalId){
  const rows=paymentsCache.filter(p=>p.rental_id===rentalId&&p.payment_type==='rental');
  const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
  const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
- return {paid,pending,remaining:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid-pending),outstanding:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid)};
+ const due=rentalAmountDue(rentalsCache.find(r=>r.id===rentalId));
+ return {paid,pending,due,remaining:Math.max(0,due-paid-pending),outstanding:Math.max(0,due-paid)};
 }
 function updatePaymentQuote(){
  const id=$('paymentRental').value;
  const rental=rentalsCache.find(r=>r.id===id);
  if(!rental){$('paymentQuote').textContent='Pilih rental untuk melihat sisa tagihan.';return;}
- const t=paymentTotalsForRental(id);
- $('paymentQuote').textContent='Harga '+rupiah(rental.rental_price)+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
+ const t=paymentTotalsForRental(id),discount=Number(rental.discount_amount||0);
+ $('paymentQuote').textContent='Tagihan akhir '+rupiah(t.due)+(discount>0?' (harga awal '+rupiah(rental.original_rental_price??rental.rental_price)+' − diskon '+rupiah(discount)+')':'')+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
  $('paymentAmount').max=String(t.remaining);
+}
+function updateDiscountQuote(){
+ const id=$('discountRental').value,rental=rentalsCache.find(r=>r.id===id);
+ if(!rental){$('discountQuote').textContent='Pilih rental untuk melihat harga dan diskon saat ini.';return;}
+ const base=Number(rental.original_rental_price??rental.rental_price??0),discount=Number($('discountAmount').value||0);
+ const due=Math.max(0,Math.min(Number(rental.rental_price||0),base-discount)),totals=paymentTotalsForRental(id);
+ $('discountQuote').textContent='Harga awal '+rupiah(base)+' · Diskon saat ini '+rupiah(rental.discount_amount||0)+' · Diskon baru '+rupiah(discount)+' · Tagihan setelah diskon '+rupiah(due)+' · Pembayaran lunas/menunggu '+rupiah(totals.paid+totals.pending)+'.';
+ $('discountAmount').max=String(base);
 }
 const CAPITAL_TARGET_RUPIAH=1620000; // Modal awal 4 unit: Hollyland 700k + TNW 340k + 2 Mixio 290k.
 let capitalAnimationFrame=0;
@@ -749,7 +778,8 @@ async function loadPayments(token=sessionRenderToken){
   const rows=paymentByRental.get(r.id)||[];
   const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
   const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
-  return {r,paid,pending,remaining:Math.max(0,Number(r.rental_price||0)-paid)};
+  const due=rentalAmountDue(r);
+  return {r,paid,pending,due,remaining:Math.max(0,due-paid)};
  });
  const totalPaid=summaries.reduce((n,x)=>n+x.paid,0);
  const totalPending=summaries.reduce((n,x)=>n+x.pending,0);
@@ -758,7 +788,11 @@ async function loadPayments(token=sessionRenderToken){
  $('paymentPendingTotal').textContent=rupiah(totalPending);
  $('paymentOutstandingTotal').textContent=rupiah(totalOutstanding);
  $('paymentOpenCount').textContent=summaries.filter(x=>x.remaining>0).length;
- $('paymentRentalRows').innerHTML=summaries.map(x=>'<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+rupiah(x.r.rental_price)+'</td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada rental.</td></tr>';
+ $('paymentRentalRows').innerHTML=summaries.map(x=>{
+  const base=Number(x.r.original_rental_price??x.r.rental_price??0),discount=Number(x.r.discount_amount||0);
+  const priceLabel=discount>0?rupiah(base)+'<br><span class="hint">Diskon −'+rupiah(discount)+' · '+safe(x.r.discount_reason||'Tanpa keterangan')+'</span>':rupiah(base);
+  return '<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+priceLabel+'</td><td><b>'+rupiah(x.due)+'</b></td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>';
+ }).join('')||'<tr><td colspan="7" class="empty">Belum ada rental.</td></tr>';
  $('paymentRows').innerHTML=paymentsCache.map(p=>{
   const r=rentalsCache.find(x=>x.id===p.rental_id);
   const canManage=['owner','admin'].includes(currentProfile?.role)&&['pending','paid'].includes(p.payment_status);
@@ -774,8 +808,9 @@ async function loadPayments(token=sessionRenderToken){
   ].filter(Boolean).join('<br>');
   return '<tr><td>'+new Date(p.created_at).toLocaleString('id-ID')+'</td><td><b>'+safe(r?.rental_code||'—')+'</b></td><td>'+safe(r?.customers?.name||'—')+'</td><td>'+rupiah(p.amount)+'</td><td>'+safe(paymentMethodLabel(p.payment_method))+'</td><td><span class="tag '+(p.payment_status==='paid'?'green':p.payment_status==='pending'?'orange':'')+'">'+safe(paymentStatusLabel(p.payment_status))+'</span>'+(auditDetails?'<br>'+auditDetails:'')+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+confirmButton+correctionButton+voidButton+'</div></td></tr>';
  }).join('')||'<tr><td colspan="7" class="empty">Belum ada pembayaran rental.</td></tr>';
- $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,Number(x.r.rental_price||0)-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
- updatePaymentQuote();
+ $('paymentRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>{const available=Math.max(0,x.due-x.paid-x.pending);const state=available>0?'Sisa dapat dicatat '+rupiah(available):x.remaining<=0?'Sudah lunas':'Menunggu konfirmasi pembayaran';return '<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+' · '+state+'</option>';}).join('')+(summaries.length?'':'<option value="" disabled>Belum ada rental aktif</option>');
+ $('discountRental').innerHTML='<option value="">Pilih rental…</option>'+summaries.map(x=>'<option value="'+safe(x.r.id)+'">'+safe(x.r.rental_code)+' · '+safe(x.r.customers?.name)+'</option>').join('');
+ updatePaymentQuote();updateDiscountQuote();
 }
 
 async function refresh(token=sessionRenderToken){try{await loadData(token);if(token===sessionRenderToken)clearMsg('globalMsg');}catch(e){if(token===sessionRenderToken)showMsg('globalMsg',e.message||'Gagal memuat data.','error');}}
@@ -905,6 +940,32 @@ $('inventoryRows').addEventListener('change',async e=>{
  }
 });
 $('paymentRental').addEventListener('change',updatePaymentQuote);
+$('discountRental').addEventListener('change',()=>{
+ const rental=rentalsCache.find(r=>r.id===$('discountRental').value);
+ $('discountAmount').value=rental?String(Number(rental.discount_amount||0)):'';
+ $('discountReason').value=rental?.discount_reason||'';
+ updateDiscountQuote();
+});
+$('discountAmount').addEventListener('input',updateDiscountQuote);
+$('discountClear').addEventListener('click',()=>{$('discountAmount').value='0';$('discountReason').value='';updateDiscountQuote();});
+$('rentalDiscountForm').addEventListener('submit',async e=>{
+ e.preventDefault();clearMsg('discountMsg');
+ if(!['owner','admin'].includes(currentProfile?.role)){showMsg('discountMsg','Hanya Owner/Admin yang dapat mengatur diskon.','error');return;}
+ const rentalId=$('discountRental').value,amount=Number($('discountAmount').value),reason=$('discountReason').value.trim();
+ if(!rentalId||!Number.isSafeInteger(amount)||amount<0||(amount>0&&reason.length<3)){showMsg('discountMsg','Pilih rental, isi nominal diskon yang valid, dan alasan minimal 3 karakter.','error');return;}
+ const button=$('discountSubmit');button.disabled=true;button.textContent='Menyimpan…';
+ try{
+  const {data,error}=await db.rpc('apply_rental_discount',{p_rental_id:rentalId,p_discount_amount:amount,p_discount_reason:reason});
+  if(error)throw error;
+  showMsg('discountMsg','Diskon berhasil disimpan. Tagihan akhir '+rupiah(data?.amount_due??0)+'. Riwayat diskon tercatat.','success');
+  await refresh();
+  $('discountRental').value=rentalId;
+  const rental=rentalsCache.find(r=>r.id===rentalId);
+  $('discountAmount').value=String(Number(rental?.discount_amount||0));$('discountReason').value=rental?.discount_reason||'';
+  updateDiscountQuote();
+ }catch(err){showMsg('discountMsg','Diskon gagal disimpan: '+(err.message||'Kesalahan tidak diketahui.'),'error');}
+ finally{button.disabled=false;button.textContent='Simpan diskon';}
+});
 $('rentalPosPaymentMethod').addEventListener('change',()=>{
  const method=$('rentalPosPaymentMethod').value;
  const cash=method==='cash';
