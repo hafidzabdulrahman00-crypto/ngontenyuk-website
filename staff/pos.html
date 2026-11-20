@@ -309,7 +309,7 @@ $('checkout').addEventListener('click',async()=>{
    if(!$('guaranteeExplained').checked||!$('termsAccepted').checked)throw new Error('Lengkapi penjelasan ketentuan penyewaan dan persetujuan perjanjian.');
    const tenantSig=getTenantSig(),staffSig=getStaffSig();
    if(!tenantSig||!staffSig)throw new Error('Kedua pihak harus menandatangani surat menggunakan stylus/jari.');
-   if(!Number.isFinite(startAt.getTime())||startAt.getTime()<Date.now()-60000||endAt<=startAt)throw new Error('Periksa tanggal dan waktu rental.');
+   if(!Number.isFinite(startAt.getTime())||!Number.isFinite(endAt.getTime())||endAt<=startAt)throw new Error('Periksa tanggal dan waktu rental. Waktu mulai boleh berada di masa lampau.');
    await refreshAvailability();
    if(availabilityError)throw new Error('Ketersediaan jadwal gagal diverifikasi. Checkout dibatalkan demi keamanan.');
    const conflicts=selectedUnits.filter(u=>conflictingUnitIds.has(u.id));
