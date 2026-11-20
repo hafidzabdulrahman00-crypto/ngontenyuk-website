@@ -125,6 +125,7 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
   <button class="nav" data-page="rentals">Kasir & Penyewaan<small>Transaksi COD dan jadwal rental</small></button>
   <a class="nav" href="./pos.html" style="display:block;text-decoration:none">POS Kasir<small>Kasir iPad & surat digital</small></a>
   <button class="nav" data-page="payments">Pembayaran<small>Tagihan dan riwayat cicilan</small></button>
+  <button class="nav" data-page="catalogRequests">Permintaan Katalog<small>Booking masuk dari website</small></button>
   <button class="nav" data-page="reviews">Review publik<small>Moderasi testimoni pelanggan</small></button>
   <button class="nav owner-only" data-page="reports">Laporan keuangan<small>Arus kas dan pengeluaran</small></button>
   <button class="nav owner-only" data-page="stock">Tambah stok<small>Tambah unit ke produk</small></button>
@@ -212,6 +213,11 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
      <div id="paymentCorrectionMsg" class="notice hidden"></div>
     </form>
     <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Kode rental</th><th>Pelanggan</th><th>Nominal</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="paymentRows"><tr><td colspan="7">Memuat data…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="page-catalogRequests" class="page hidden">
+   <div class="page-head"><div><h2>Permintaan dari Katalog</h2><p>Permintaan sewa publik yang perlu dihubungi dan diverifikasi. Belum menjadi rental terkonfirmasi.</p></div><button class="btn secondary" id="catalogRequestsRefresh">Muat ulang</button></div>
+   <div id="catalogRequestsMsg" class="notice hidden" role="status" aria-live="polite"></div>
+   <div class="panel"><div class="table-wrap"><table><thead><tr><th>Masuk / Kode</th><th>Pelanggan</th><th>Produk & unit</th><th>Jadwal & tarif</th><th>Titik temu / catatan</th><th>Status & tindak lanjut</th></tr></thead><tbody id="catalogRequestRows"><tr><td colspan="6">Memuat permintaan…</td></tr></tbody></table></div></div>
   </section>
   <section id="page-reviews" class="page hidden">
    <div class="page-head"><div><h2>Review publik</h2><p>Review dari website masuk sebagai draft dan hanya tampil setelah disetujui petugas.</p></div><button class="btn secondary" id="reviewRefresh">Muat ulang</button></div>
@@ -546,6 +552,25 @@ function renderDashboardInsights(){
  if(avatar&&currentProfile?.full_name)avatar.textContent=currentProfile.full_name.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
 }
 
+async function loadCatalogRequests(){
+ const {data,error}=await db.from('catalog_rental_requests')
+  .select('id,request_code,customer_name,customer_phone,product_id,unit_id,duration_hours,start_at,end_at,estimated_price,pickup_location,notes,status,staff_notes,created_at,products(name),units(unit_code)')
+  .order('created_at',{ascending:false}).limit(300);
+ if(error)throw error;
+ const rows=data||[];
+ $('catalogRequestRows').innerHTML=rows.map(r=>{
+  const start=new Date(r.start_at),end=new Date(r.end_at);
+  const statusOptions=[['new','Baru'],['contacted','Sudah dihubungi'],['converted','Sudah dibuat di POS'],['rejected','Ditolak']].map(([v,l])=>'<option value="'+v+'" '+(r.status===v?'selected':'')+'>'+l+'</option>').join('');
+  return '<tr>'+
+   '<td><b>'+safe(r.request_code)+'</b><br><small>'+new Date(r.created_at).toLocaleString('id-ID')+'</small></td>'+
+   '<td><b>'+safe(r.customer_name)+'</b><br><a href="https://wa.me/'+safe(r.customer_phone)+'" target="_blank" rel="noopener">'+safe(r.customer_phone)+'</a></td>'+
+   '<td>'+safe(r.products?.name||'Produk')+'<br><b>'+safe(r.units?.unit_code||'—')+'</b></td>'+
+   '<td>'+start.toLocaleString('id-ID')+' – '+end.toLocaleString('id-ID')+'<br>'+safe(r.duration_hours)+' jam · <b>'+rupiah(r.estimated_price)+'</b></td>'+
+   '<td>'+safe(r.pickup_location)+'<br><small>'+safe(r.notes||'Tanpa catatan')+'</small></td>'+
+   '<td style="min-width:190px"><select class="status-select" data-catalog-status="'+safe(r.id)+'">'+statusOptions+'</select><textarea class="field-input" data-catalog-note="'+safe(r.id)+'" rows="2" maxlength="500" placeholder="Catatan staf">'+safe(r.staff_notes||'')+'</textarea><button class="btn secondary" type="button" data-catalog-save="'+safe(r.id)+'" style="margin-top:6px">Simpan tindak lanjut</button></td>'+
+  '</tr>';
+ }).join('')||'<tr><td colspan="6" class="empty">Belum ada permintaan dari katalog.</td></tr>';
+}
 async function loadReviews(){
  const {data,error}=await db.from('reviews')
   .select('id,customer_name,rating,comment,is_published,created_at')
@@ -723,6 +748,7 @@ document.querySelector('.side').addEventListener('click',e=>{
  document.getElementById('page-'+page).classList.remove('hidden');
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el===nav));
  clearMsg('globalMsg');
+ if(page==='catalogRequests')loadCatalogRequests().catch(err=>showMsg('catalogRequestsMsg','Gagal memuat permintaan: '+(err.message||'Kesalahan tidak diketahui.'),'error'));
  if(page==='reviews')loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error'));
  if(page==='reports')loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error'));
 });
@@ -761,6 +787,23 @@ $('logoutBtn').addEventListener('click',async()=>{
 });
 db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>handleSession(session),0);});
 $('refreshBtn').addEventListener('click',refresh);$('inventoryRefresh').addEventListener('click',refresh);$('rentalRefresh').addEventListener('click',refresh);$('paymentRefresh').addEventListener('click',refresh);
+$('catalogRequestsRefresh').addEventListener('click',()=>loadCatalogRequests().catch(err=>showMsg('catalogRequestsMsg','Gagal memuat permintaan: '+(err.message||'Kesalahan tidak diketahui.'),'error')));
+$('catalogRequestRows').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-catalog-save]');
+ if(!button)return;
+ const id=button.dataset.catalogSave;
+ const status=$('catalogRequestRows').querySelector('[data-catalog-status="'+id+'"]')?.value;
+ const staff_notes=$('catalogRequestRows').querySelector('[data-catalog-note="'+id+'"]')?.value.trim()||null;
+ if(!['new','contacted','converted','rejected'].includes(status)){showMsg('catalogRequestsMsg','Status permintaan tidak valid.','error');return;}
+ if(status==='converted'&&!confirm('Pastikan transaksi rental sudah berhasil dibuat melalui POS sebelum menandai permintaan ini sebagai sudah dibuat di POS. Lanjutkan?'))return;
+ button.disabled=true;
+ try{
+  const {error}=await db.from('catalog_rental_requests').update({status,staff_notes,handled_by:currentUser.id,handled_at:new Date().toISOString()}).eq('id',id);
+  if(error)throw error;
+  showMsg('catalogRequestsMsg','Tindak lanjut permintaan berhasil disimpan.','success');
+  await loadCatalogRequests();
+ }catch(err){showMsg('catalogRequestsMsg','Gagal menyimpan tindak lanjut: '+(err.message||'Kesalahan tidak diketahui.'),'error');button.disabled=false;}
+});
 $('reviewRefresh').addEventListener('click',()=>loadReviews().catch(err=>showMsg('globalMsg','Gagal memuat review: '+(err.message||'Kesalahan tidak diketahui.'),'error')));
 $('reportRefresh').addEventListener('click',()=>loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error')));
 $('reportApply').addEventListener('click',()=>loadReports().catch(err=>showMsg('reportMsg',err.message||'Laporan gagal dimuat.','error')));
