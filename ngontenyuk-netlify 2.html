@@ -1803,14 +1803,37 @@
     ];
     var extra = [], rate = 5;
 
+    function escapeHtml(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+        return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+      });
+    }
+
     function renderRv() {
       $("rvl").innerHTML = extra.concat(SEED).map(function (r) {
-        var stars = "★★★★★".slice(0, r.s || 5) + "☆☆☆☆☆".slice(0, 5 - (r.s || 5));
+        var rating = Math.max(1, Math.min(5, Number(r.s) || 5));
+        var stars = "★★★★★".slice(0, rating) + "☆☆☆☆☆".slice(0, 5 - rating);
         var nameTrim = (r.n || "").trim();
         var hideAuthor = !nameTrim || /^pelanggan\s+ngontenyuk(\.co)?$/i.test(nameTrim);
-        var authorHtml = hideAuthor ? "" : '<small>— ' + nameTrim + '</small>';
-        return '<div class="rv-card"><div class="rv-stars">' + stars + '</div><p>“' + r.t + '”</p>' + authorHtml + '</div>';
+        var authorHtml = hideAuthor ? "" : '<small>— ' + escapeHtml(nameTrim) + '</small>';
+        return '<div class="rv-card"><div class="rv-stars">' + stars + '</div><p>“' + escapeHtml(r.t) + '”</p>' + authorHtml + '</div>';
       }).join("");
+    }
+
+    async function loadPublishedReviews() {
+      try {
+        var response = await fetch(SUPABASE_URL + "/rest/v1/reviews?select=customer_name,rating,comment&is_published=eq.true&order=created_at.desc&limit=30", {
+          headers: { "apikey": SUPABASE_PUBLIC_KEY, "Authorization": "Bearer " + SUPABASE_PUBLIC_KEY }
+        });
+        if (!response.ok) throw new Error("Review CRM tidak dapat dimuat.");
+        var rows = await response.json();
+        if (Array.isArray(rows) && rows.length) {
+          extra = rows.map(function (r) { return { n: r.customer_name || "", s: r.rating, t: r.comment || "" }; });
+          renderRv();
+        }
+      } catch (error) {
+        console.warn("NgontenYuk public reviews unavailable", error);
+      }
     }
 
     function drawStars() {
@@ -1820,22 +1843,30 @@
     }
 
     $("sp").onclick = function (e) { if (e.target.dataset.r) { rate = +e.target.dataset.r; drawStars(); } };
-    $("rs").onclick = function () {
-      var n = $("rn").value.trim(), t = $("rt").value.trim();
-      if (!n || t.length < 5) { $("rvm").textContent = "Isi nama dan komentar minimal 5 karakter dulu ya."; return; }
-      var r = { n: n, s: rate, t: t, ts: Date.now() };
-      extra.unshift(r);
-      renderRv();
-      $("rn").value = "";
-      $("rt").value = "";
-      $("rvm").textContent = "Terima kasih! Review kamu sudah tampil di daftar ulasan.";
-
-      if (API) {
-        fetch(API, {
+    $("rs").onclick = async function () {
+      var n = $("rn").value.trim(), t = $("rt").value.trim(), button = $("rs");
+      if (n.length < 2 || n.length > 40 || t.length < 5 || t.length > 400) {
+        $("rvm").textContent = "Nama 2–40 karakter dan komentar 5–400 karakter.";
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Mengirim…";
+      try {
+        var response = await fetch(SUPABASE_URL + "/rest/v1/rpc/submit_public_review", {
           method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "review", n: n, s: rate, t: t })
-        }).catch(function () {});
+          headers: { "Content-Type": "application/json", "apikey": SUPABASE_PUBLIC_KEY, "Authorization": "Bearer " + SUPABASE_PUBLIC_KEY },
+          body: JSON.stringify({ p_customer_name: n, p_rating: rate, p_comment: t })
+        });
+        var result = await response.json();
+        if (!response.ok) throw new Error(result.message || result.error || "Review belum berhasil dikirim.");
+        $("rn").value = "";
+        $("rt").value = "";
+        $("rvm").textContent = "Terima kasih! Review sudah masuk CRM dan akan tampil setelah disetujui petugas.";
+      } catch (error) {
+        $("rvm").textContent = error.message || "Review gagal dikirim. Coba lagi.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Kirim Review";
       }
     };
 
@@ -1844,6 +1875,7 @@
     drawStars();
     renderRv();
     loadApi();
+    loadPublishedReviews();
     setInterval(loadApi, 60000);
   </script>
 </body>
