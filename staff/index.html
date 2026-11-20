@@ -77,7 +77,9 @@ body{background:radial-gradient(ellipse at 88% 0%,#eee5ff 0,transparent 34%),#f8
 .dashboard-chart{height:160px;display:flex;align-items:end;justify-content:space-around;gap:12px;padding:14px 8px 0;border-bottom:1px solid #eee8f6}
 .chart-col{height:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:7px;min-width:0}
 .chart-bar-wrap{height:118px;width:100%;display:flex;align-items:end;justify-content:center}
-.chart-bar{width:min(28px,70%);min-height:3px;border-radius:8px 8px 2px 2px;background:linear-gradient(180deg,#A17AF0,#7136D9);box-shadow:0 4px 10px #7136D933}
+.chart-bar{width:min(28px,70%);min-height:3px;border-radius:8px 8px 2px 2px;background:linear-gradient(180deg,#A17AF0,#7136D9);box-shadow:0 4px 10px #7136D933;transform-origin:bottom;animation:dashboardBarGrow .9s cubic-bezier(.2,.75,.25,1) both}
+@keyframes dashboardBarGrow{from{transform:scaleY(.02);opacity:.45}to{transform:scaleY(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.chart-bar{animation:none}}
 .chart-label{font-size:10px;color:#786d8c}
 .chart-value{font-size:10px;color:#4d337e;font-weight:700}
 .chart-empty{font-size:11px;color:#9a91a8;text-align:center;width:100%;padding:48px 8px}
@@ -555,6 +557,7 @@ async function loadRentals(token=sessionRenderToken){
 
 
 function renderDashboardInsights(){
+ renderCapitalTracker(capitalRevenueCache);
  const rows=rentalsCache||[];
  const host=$('recentRentalRows');
  if(host){
@@ -575,7 +578,7 @@ function renderDashboardInsights(){
   const max=Math.max(1,...counts);
   const labels=range===7?['Min','Sen','Sel','Rab','Kam','Jum','Sab']:null;
   chart.style.width='max(100%, '+(days.length*38)+'px)';
-  chart.innerHTML=days.map((d,i)=>'<div class="chart-col"><span class="chart-value">'+counts[i]+'</span><div class="chart-bar-wrap"><div class="chart-bar" style="height:'+Math.max(3,counts[i]/max*100)+'%"></div></div><span class="chart-label">'+(labels?labels[d.getDay()]:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'))+'</span></div>').join('');
+  chart.innerHTML=days.map((d,i)=>'<div class="chart-col"><span class="chart-value">'+counts[i]+'</span><div class="chart-bar-wrap"><div class="chart-bar" style="height:'+Math.max(3,counts[i]/max*100)+'%;animation-delay:'+Math.min(i*35,700)+'ms"></div></div><span class="chart-label">'+(labels?labels[d.getDay()]:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'))+'</span></div>').join('');
  }
  const avatar=$('dashboardAvatar');
  if(avatar&&currentProfile?.full_name)avatar.textContent=currentProfile.full_name.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
@@ -654,23 +657,36 @@ function updatePaymentQuote(){
  $('paymentAmount').max=String(t.remaining);
 }
 const CAPITAL_TARGET_RUPIAH=1620000; // Modal awal 4 unit: Hollyland 700k + TNW 340k + 2 Mixio 290k.
-function renderCapitalTracker(revenue){
+let capitalRevenueCache=0,capitalAnimationFrame=0;
+function animateCapitalTracker(revenue){
  const target=CAPITAL_TARGET_RUPIAH;
  const collected=Math.max(0,Number(revenue)||0);
  const ratio=target>0?collected/target:0;
- const percent=Math.round(ratio*100);
- const ringPercent=Math.max(0,Math.min(100,ratio*100));
- const remaining=Math.max(0,target-collected);
- const ring=$('capitalRing');
- if(ring){
-  ring.style.background='conic-gradient(#7136D9 0% '+ringPercent+'%,#eee8f8 '+ringPercent+'% 100%)';
-  ring.setAttribute('aria-label','Revenue terkumpul '+percent+' persen dari target modal '+rupiah(target));
- }
- $('capitalRevenue').textContent=rupiah(collected);
- $('capitalRemaining').textContent=rupiah(remaining);
- $('capitalPercent').textContent=percent+'%';
- $('capitalTargetLabel').textContent='Target '+rupiah(target);
- $('capitalTrackerNote').textContent=collected>=target
+ const ringTarget=Math.max(0,Math.min(100,ratio*100));
+ const ring=$('capitalRing'),revenueEl=$('capitalRevenue'),remainingEl=$('capitalRemaining'),percentEl=$('capitalPercent');
+ if(!ring||!revenueEl||!remainingEl||!percentEl)return;
+ if(capitalAnimationFrame)cancelAnimationFrame(capitalAnimationFrame);
+ const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const duration=reduceMotion?0:1350,start=performance.now();
+ const paint=(progress)=>{
+  const eased=1-Math.pow(1-progress,3);
+  const current=collected*eased,currentRemaining=Math.max(0,target-current),currentPercent=ringTarget*eased;
+  ring.style.background='conic-gradient(#7136D9 0% '+currentPercent+'%,#eee8f8 '+currentPercent+'% 100%)';
+  ring.setAttribute('aria-label','Revenue terkumpul '+Math.round(currentPercent)+' persen dari target modal '+rupiah(target));
+  revenueEl.textContent=rupiah(current);remainingEl.textContent=rupiah(currentRemaining);percentEl.textContent=Math.round(currentPercent)+'%';
+ };
+ if(!duration){paint(1);capitalAnimationFrame=0;return;}
+ const tick=(now)=>{
+  const progress=Math.min(1,(now-start)/duration);paint(progress);
+  if(progress<1)capitalAnimationFrame=requestAnimationFrame(tick);else capitalAnimationFrame=0;
+ };
+ paint(0);capitalAnimationFrame=requestAnimationFrame(tick);
+}
+function renderCapitalTracker(revenue){
+ capitalRevenueCache=Math.max(0,Number(revenue)||0);
+ animateCapitalTracker(capitalRevenueCache);
+ $('capitalTargetLabel').textContent='Target '+rupiah(CAPITAL_TARGET_RUPIAH);
+ $('capitalTrackerNote').textContent=capitalRevenueCache>=CAPITAL_TARGET_RUPIAH
   ?'Target modal awal sudah tercapai. Revenue berikutnya merupakan pendapatan setelah pemulihan modal, sebelum biaya operasional.'
   :'Progres dihitung dari pembayaran rental berstatus lunas; belum dikurangi biaya operasional.';
 }
