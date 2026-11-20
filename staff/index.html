@@ -612,14 +612,16 @@ function paymentTotalsForRental(rentalId){
  const rows=paymentsCache.filter(p=>p.rental_id===rentalId&&p.payment_type==='rental');
  const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
  const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
- return {paid,pending,remaining:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid-pending),outstanding:Math.max(0,Number(rentalsCache.find(r=>r.id===rentalId)?.rental_price||0)-paid)};
+ const rental=rentalsCache.find(r=>r.id===rentalId);
+ const due=Math.max(0,Number(rental?.rental_price||0)-Number(rental?.discount_amount||0));
+ return {paid,pending,due,remaining:Math.max(0,due-paid-pending),outstanding:Math.max(0,due-paid)};
 }
 function updatePaymentQuote(){
  const id=$('paymentRental').value;
  const rental=rentalsCache.find(r=>r.id===id);
  if(!rental){$('paymentQuote').textContent='Pilih rental untuk melihat sisa tagihan.';return;}
  const t=paymentTotalsForRental(id);
- $('paymentQuote').textContent='Harga '+rupiah(rental.rental_price)+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
+ $('paymentQuote').textContent='Tagihan akhir '+rupiah(t.due)+(Number(rental.discount_amount||0)>0?' (harga awal '+rupiah(rental.original_rental_price??rental.rental_price)+' − diskon '+rupiah(rental.discount_amount)+')':'')+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
  $('paymentAmount').max=String(t.remaining);
 }
 async function loadPayments(token=sessionRenderToken){
@@ -691,7 +693,8 @@ async function loadPayments(token=sessionRenderToken){
   const rows=paymentByRental.get(r.id)||[];
   const paid=rows.filter(p=>p.payment_status==='paid').reduce((n,p)=>n+Number(p.amount||0),0);
   const pending=rows.filter(p=>p.payment_status==='pending').reduce((n,p)=>n+Number(p.amount||0),0);
-  return {r,paid,pending,remaining:Math.max(0,Number(r.rental_price||0)-paid)};
+  const due=Math.max(0,Number(r.rental_price||0)-Number(r.discount_amount||0));
+  return {r,paid,pending,due,remaining:Math.max(0,due-paid)};
  });
  const totalPaid=summaries.reduce((n,x)=>n+x.paid,0);
  const totalPending=summaries.reduce((n,x)=>n+x.pending,0);
