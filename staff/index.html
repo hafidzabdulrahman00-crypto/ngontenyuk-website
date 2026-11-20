@@ -100,6 +100,26 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
 .dashboard-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media(max-width:1100px){.dashboard-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:850px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Capital recovery tracker */
+.capital-tracker-panel{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:20px;align-items:center;margin:0 0 14px;padding:20px 22px;background:linear-gradient(115deg,#fff 0%,#faf7ff 100%)}
+.capital-tracker-copy{min-width:0}.capital-tracker-copy .panel-heading{margin-bottom:16px}
+.capital-tracker-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.capital-tracker-values small{display:block;color:#887d9a;font-size:11px}
+.capital-tracker-values strong{display:block;margin-top:4px;color:#351078;font-size:clamp(18px,2vw,25px);overflow-wrap:anywhere}
+.capital-tracker-note{margin:12px 0 0;color:#827794;font-size:11px}
+.capital-ring-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.capital-ring{width:158px;height:158px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#7136D9 0%,#eee8f8 0);position:relative}
+.capital-ring:before{content:"";position:absolute;inset:11px;border-radius:50%;background:#fff}
+.capital-ring-center{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
+.capital-ring-center strong{font-size:30px;line-height:1.1;color:#351078}
+.capital-ring-center span{font-size:10px;color:#8a809a;margin-top:4px}
+.capital-ring-wrap>b{font-size:11px;color:#675782}
+.chart-bar{transform-origin:bottom;animation:dashboardBarGrow .9s cubic-bezier(.2,.75,.25,1) both}
+@keyframes dashboardBarGrow{from{transform:scaleY(.02);opacity:.45}to{transform:scaleY(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.chart-bar{animation:none}}
+@media(max-width:560px){.capital-tracker-panel{grid-template-columns:1fr;gap:16px;padding:16px}.capital-ring{width:142px;height:142px}.capital-tracker-values{gap:10px}}
+
 </style>
 </head>
 <body>
@@ -142,6 +162,22 @@ body,button,input,select,textarea{font-family:"Manrope",Inter,ui-sans-serif,syst
     <div class="stat"><div class="stat-icon violet">⌁</div><span>Perawatan</span><strong id="statMaintenance">—</strong><small>Perlu pemeriksaan</small></div>
     <div class="stat"><div class="stat-icon purple">Rp</div><span>Total Revenue</span><strong id="statRevenue">—</strong><small id="statRevenueTrend">Membandingkan 30 hari terakhir</small></div>
    </div>
+   <section class="panel capital-tracker-panel" aria-labelledby="capitalTrackerTitle">
+    <div class="capital-tracker-copy">
+     <div class="panel-heading"><div><h3 id="capitalTrackerTitle">Perjalanan Pengembalian Modal</h3><p>Akumulasi pembayaran rental lunas dibandingkan total modal awal 4 unit microphone</p></div><span class="dashboard-period">TARGET MODAL</span></div>
+     <div class="capital-tracker-values">
+      <div><small>Revenue rental terkumpul</small><strong id="capitalRevenue">—</strong></div>
+      <div><small>Sisa menuju target</small><strong id="capitalRemaining">—</strong></div>
+     </div>
+     <p class="capital-tracker-note" id="capitalTrackerNote">Menghitung pembayaran rental yang berstatus lunas.</p>
+    </div>
+    <div class="capital-ring-wrap">
+     <div class="capital-ring" id="capitalRing" role="img" aria-label="Progres pengembalian modal">
+      <div class="capital-ring-center"><strong id="capitalPercent">0%</strong><span>modal kembali</span></div>
+     </div>
+     <b id="capitalTargetLabel">Target Rp1.620.000</b>
+    </div>
+   </section>
    <div class="dashboard-grid">
     <div class="panel dashboard-chart-panel"><div class="panel-heading"><div><h3>Grafik Rental</h3><p id="dashboardChartSubtitle">Jumlah transaksi dibuat · 7 hari terakhir</p></div><select id="dashboardPeriodSelect" class="dashboard-period-select" aria-label="Periode grafik rental"><option value="7">7 hari</option><option value="30">30 hari</option><option value="60">60 hari</option><option value="90">90 hari</option></select></div><div class="dashboard-chart-scroll"><div id="dashboardChart" class="dashboard-chart"><div class="chart-empty">Memuat grafik rental…</div></div></div></div>
     <div class="panel dashboard-transactions"><div class="panel-heading"><h3>Transaksi Terbaru</h3><button class="text-link" type="button" data-page="rentals">Lihat Semua →</button></div><div class="recent-transactions" id="recentRentalRows"><div class="chart-empty">Memuat transaksi…</div></div></div>
@@ -597,6 +633,40 @@ function updatePaymentQuote(){
  $('paymentQuote').textContent='Harga '+rupiah(rental.rental_price)+' · Sudah dibayar '+rupiah(t.paid)+' · Menunggu '+rupiah(t.pending)+' · Maksimal pembayaran baru '+rupiah(t.remaining)+'.';
  $('paymentAmount').max=String(t.remaining);
 }
+const CAPITAL_TARGET_RUPIAH=1620000; // Modal awal 4 unit: Hollyland 700k + TNW 340k + 2 Mixio 290k.
+let capitalAnimationFrame=0;
+function animateCapitalTracker(revenue){
+ const target=CAPITAL_TARGET_RUPIAH;
+ const collected=Math.max(0,Number(revenue)||0);
+ const ratio=target>0?collected/target:0;
+ const ringTarget=Math.max(0,Math.min(100,ratio*100));
+ const ring=$('capitalRing'),revenueEl=$('capitalRevenue'),remainingEl=$('capitalRemaining'),percentEl=$('capitalPercent');
+ if(!ring||!revenueEl||!remainingEl||!percentEl)return;
+ if(capitalAnimationFrame)cancelAnimationFrame(capitalAnimationFrame);
+ const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const duration=reduceMotion?0:1350,start=performance.now();
+ const paint=(progress)=>{
+  const eased=1-Math.pow(1-progress,3);
+  const current=collected*eased,currentRemaining=Math.max(0,target-current),currentPercent=ringTarget*eased;
+  ring.style.background='conic-gradient(#7136D9 0% '+currentPercent+'%,#eee8f8 '+currentPercent+'% 100%)';
+  ring.setAttribute('aria-label','Revenue terkumpul '+Math.round(currentPercent)+' persen dari target modal '+rupiah(target));
+  revenueEl.textContent=rupiah(current);remainingEl.textContent=rupiah(currentRemaining);percentEl.textContent=Math.round(currentPercent)+'%';
+ };
+ if(!duration){paint(1);capitalAnimationFrame=0;return;}
+ const tick=(now)=>{
+  const progress=Math.min(1,(now-start)/duration);paint(progress);
+  if(progress<1)capitalAnimationFrame=requestAnimationFrame(tick);else capitalAnimationFrame=0;
+ };
+ paint(0);capitalAnimationFrame=requestAnimationFrame(tick);
+}
+function renderCapitalTracker(revenue){
+ const collected=Math.max(0,Number(revenue)||0);
+ animateCapitalTracker(collected);
+ $('capitalTargetLabel').textContent='Target '+rupiah(CAPITAL_TARGET_RUPIAH);
+ $('capitalTrackerNote').textContent=collected>=CAPITAL_TARGET_RUPIAH
+  ?'Target modal awal sudah tercapai. Revenue berikutnya merupakan pendapatan setelah pemulihan modal, sebelum biaya operasional.'
+  :'Progres dihitung dari pembayaran rental berstatus lunas; belum dikurangi biaya operasional.';
+}
 async function loadPayments(token=sessionRenderToken){
  const {data,error}=await db.from('payments')
   .select('id,rental_id,amount,payment_type,payment_method,payment_status,paid_at,created_at')
@@ -606,6 +676,19 @@ async function loadPayments(token=sessionRenderToken){
  if(error)throw error;
  if(token!==sessionRenderToken)return;
  paymentsCache=data||[];
+ // Pendapatan rental sepanjang waktu: hanya pembayaran berstatus lunas, tanpa batas jumlah baris.
+ let lifetimeRentalRevenue=0;
+ for(let offset=0;;offset+=1000){
+  const {data:paidRows,error:paidError}=await db.from('payments').select('amount')
+   .eq('payment_type','rental').eq('payment_status','paid')
+   .range(offset,offset+999);
+  if(paidError)throw paidError;
+  lifetimeRentalRevenue+=(paidRows||[]).reduce((sum,row)=>sum+Number(row.amount||0),0);
+  if(!paidRows||paidRows.length<1000)break;
+ }
+ if(token!==sessionRenderToken)return;
+ renderCapitalTracker(lifetimeRentalRevenue);
+
  // Revenue dihitung dari pembayaran rental lunas; tren membandingkan dua periode 30 hari.
  const revenueNow=new Date();
  const revenueCurrentStart=new Date(revenueNow.getTime()-30*24*60*60*1000);
