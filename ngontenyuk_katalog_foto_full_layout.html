@@ -1236,8 +1236,10 @@
 
   <script>
     var WA = "6285786203477";
-    var API = "https://script.google.com/macros/s/AKfycbxc6-3PBoEsCl6hVH93UF7DiHkI9p6ZVHPWSeh5Mf_mws3V2uZp5czIW82ET3ND8im1/exec";
-    var PW = "";
+    var API = "";
+    var SUPABASE_URL = "https://tyuylxmourtnajdireuc.supabase.co";
+    var SUPABASE_PUBLIC_KEY = "sb_publishable_D7uAlushPHuOyDSE0B1njg_JO0n1Cvl";
+    var CATALOG_REQUEST_URL = SUPABASE_URL + "/functions/v1/catalog-rental-request";
     var SPOTS = ["Area kos", "Muladi Dome", "FEB Undip"];
 
     // Foto permanen disimpan di folder assets/products/ pada root website.
@@ -1436,6 +1438,49 @@
         ]
       }
     ];
+
+    async function loadLiveCatalog() {
+      try {
+        var response = await fetch(SUPABASE_URL + "/rest/v1/rpc/get_public_catalog", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": SUPABASE_PUBLIC_KEY, "Authorization": "Bearer " + SUPABASE_PUBLIC_KEY },
+          body: "{}"
+        });
+        if (!response.ok) throw new Error("Katalog CRM tidak dapat dimuat (" + response.status + ").");
+        var data = await response.json();
+        if (!data || !Array.isArray(data.units)) throw new Error("Format katalog CRM tidak valid.");
+        var rentals = Array.isArray(data.rentals) ? data.rentals : [];
+        var templates = UNITS.slice();
+        var labels = {4:"4 jam",6:"6 jam",12:"12 jam",24:"24 jam"};
+        UNITS = data.units.map(function (item) {
+          var template = templates.find(function (x) { return x.name === item.product_name; });
+          if (!template) return null;
+          var unitNo = String(item.unit_code || "").split("-").pop();
+          var isAvailable = item.operational_status === "available" && item.condition !== "damaged";
+          var now = Date.now();
+          var occupiedNow = rentals.some(function (r) {
+            return r.unit_id === item.unit_id && new Date(r.start_at).getTime() <= now && new Date(r.end_at).getTime() > now;
+          });
+          return Object.assign({}, template, {
+            id: item.unit_id,
+            productId: item.product_id,
+            unitCode: item.unit_code,
+            name: item.product_name,
+            tag: item.product_name === "Mixio S15 Pro" ? "Unit #" + (Number(unitNo) || 1) : "",
+            cn: (item.connectors || []).length > 1 ? "Dual" : ((item.connectors || [])[0] || template.cn),
+            connLabel: (item.connectors || []).join(" + ") || template.connLabel,
+            status: isAvailable && !occupiedNow ? "ok" : "no",
+            prices: (item.rates || []).map(function (r) { return [labels[Number(r.duration_hours)] || (r.duration_hours + " jam"), Number(r.price)]; })
+          });
+        }).filter(Boolean);
+        if (!UNITS.length) throw new Error("Belum ada unit aktif di CRM.");
+        render();
+      } catch (error) {
+        var notice = $("photoNotice");
+        if (notice) notice.innerHTML = '<div class="photo-missing-banner"><span class="notice-text"><b>Katalog sedang tidak dapat dimuat.</b> ' + String(error.message || "Coba muat ulang halaman.").replace(/[<>&"]/g, "") + '</span><button type="button" onclick="location.reload()">Muat ulang</button></div>';
+        console.error("NgontenYuk catalog load failed", error);
+      }
+    }
 
     var SYARAT = [
       { n: "01", t: "Identitas Asli (KTM / KTP)", d: "Cukup bawa 1 kartu identitas asli yang masih berlaku sebagai jaminan saat serah terima unit." },
@@ -1636,104 +1681,64 @@
         '<h4>3. Titik Temu (COD)</h4>' +
         '<select class="fld" id="o_p">' + SPOTS.map(function (s) { return '<option>' + s + '</option>'; }).join("") + '</select>' +
         '<h4>4. Nama Pemesan</h4>' +
-        '<input class="fld" id="o_n" maxlength="60" placeholder="Nama">' +
-        '<h4>5. Catatan (Opsional)</h4>' +
+        '<input class="fld" id="o_n" maxlength="80" autocomplete="name" placeholder="Nama lengkap">' +
+        '<h4>5. Nomor WhatsApp</h4>' +
+        '<input class="fld" id="o_phone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="08xxxxxxxxxx">' +
+        '<h4>6. Catatan (Opsional)</h4>' +
         '<textarea class="fld" id="o_c" rows="2" maxlength="300" placeholder="Misal: tipe HP, keperluan acara, dll"></textarea>' +
         '<div class="est-row"><span>Estimasi Total</span><span id="o_e" style="color:var(--pu)">' + rp(CUR.prices[0][1]) + '</span></div>' +
-        '<div id="o_m" style="color:var(--bad);font-size:13px;font-weight:700;margin-bottom:8px"></div>' +
-        '<button class="btn-rent" data-send="1" type="button">Kirim Pesanan ke WhatsApp →</button>'
+        '<div id="o_m" style="color:var(--bad);font-size:13px;font-weight:700;margin-bottom:8px" aria-live="polite"></div>' +
+        '<button class="btn-rent" data-send="1" type="button">Kirim Permintaan Sewa →</button>'
       );
     }
 
-    function sendOrder() {
-      var t = $("o_t").value, n = $("o_n").value.trim(), m = $("o_m");
+    async function sendOrder() {
+      var t = $("o_t").value, n = $("o_n").value.trim(), phone = $("o_phone").value.trim(), m = $("o_m");
       if (DU < 0) { m.textContent = "Pilih durasi sewa terlebih dahulu."; return; }
       if (!t) { m.textContent = "Isi tanggal dan jam mulai sewa."; return; }
-      if (!n) { m.textContent = "Isi nama pemesan."; return; }
-      m.textContent = "";
-      var p = t.split("T"), d = p[0].split("-"), c = $("o_c").value.trim(), pr = CUR.prices[DU];
-      var txt = "Halo NgontenYuk.co, saya mau sewa mic:\n\n" +
-        "*Mic:* " + CUR.name + (CUR.tag ? " (" + CUR.tag + ")" : "") + "\n" +
-        "*Durasi:* " + pr[0] + " (" + rp(pr[1]) + ")\n" +
-        "*Mulai sewa:* " + d[2] + "/" + d[1] + "/" + d[0] + " " + p[1] + "\n" +
-        "*Titik temu (COD):* " + $("o_p").value + "\n" +
-        "*Nama:* " + n + (c ? "\n*Catatan:* " + c : "") + "\n" +
-        "*Estimasi biaya:* " + rp(pr[1]) + "\n\nTerima kasih!";
-      window.open("https://wa.me/" + WA + "?text=" + encodeURIComponent(txt), "_blank", "noopener");
-    }
-
-    // Staff Room Management
-    var OPEN = false;
-    function staffView() {
-      STAFF = true;
-      $("modal").innerHTML =
-        '<button class="x-btn" data-c="1" aria-label="Tutup">✕</button>' +
-        '<h2>Ruangan Staff</h2>' +
-        '<div style="font-size:13.5px;color:var(--ink2)">Kelola ketersediaan unit secara real-time (sinkron dengan Google Apps Script &amp; state lokal).</div>' +
-        '<div style="margin-top:12px">' + UNITS.map(function (u) {
-          var ok = u.status === "ok";
-          return (
-            '<div class="srow">' +
-              '<div>' +
-                '<b>' + u.name + (u.tag ? ' · ' + u.tag : '') + '</b><br>' +
-                '<span class="badge-status ' + (ok ? "" : "no") + '" style="margin-top:4px"><i></i>' + (ok ? "Tersedia" : "Disewa") + '</span>' +
-              '</div>' +
-              '<button class="chip" data-sf="' + u.id + '" type="button">Tandai ' + (ok ? "Disewa" : "Tersedia") + '</button>' +
-            '</div>'
-          );
-        }).join("") + '</div>' +
-        '<div id="sm" style="margin-top:10px;font-size:13px;font-weight:700;color:var(--ok)"></div>';
-    }
-
-    function setStatus(id) {
-      if (!CAN) return;
-      var u = UNITS.find(function (x) { return x.id == id; });
-      if (!u) return;
-      var ns = u.status === "ok" ? "no" : "ok";
-      u.status = ns;
-      try { localStorage.setItem("ny_status_" + id, ns); } catch (e) {}
-      render();
-      staffView();
-      $("sm").textContent = "Status " + u.name + (u.tag ? " (" + u.tag + ")" : "") + " diperbarui menjadi " + (ns === "ok" ? "Tersedia" : "Disewa") + ".";
-
-      if (API) {
-        fetch(API, {
+      if (!n || n.length < 2) { m.textContent = "Isi nama pemesan."; return; }
+      if (!phone || phone.replace(/[^0-9]/g, "").length < 9) { m.textContent = "Isi nomor WhatsApp yang valid."; return; }
+      if (!CUR || !CUR.productId || !CUR.id) { m.textContent = "Data unit CRM belum siap. Muat ulang katalog."; return; }
+      var p = CUR.prices[DU], startAt = new Date(t);
+      if (!Number.isFinite(startAt.getTime()) || startAt.getTime() < Date.now() - 120000) { m.textContent = "Waktu mulai harus sekarang atau di masa mendatang."; return; }
+      var button = document.querySelector('[data-send="1"]');
+      if (button) { button.disabled = true; button.textContent = "Mengirim ke CRM…"; }
+      m.textContent = "Memeriksa unit dan jadwal di CRM…";
+      try {
+        var response = await fetch(CATALOG_REQUEST_URL, {
           method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ pw: PW, id: id, status: ns })
-        }).catch(function () {});
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_PUBLIC_KEY,
+            "Authorization": "Bearer " + SUPABASE_PUBLIC_KEY
+          },
+          body: JSON.stringify({
+            customer_name: n,
+            customer_phone: phone,
+            product_id: CUR.productId,
+            unit_id: CUR.id,
+            duration_hours: Number(String(p[0]).match(/\d+/)[0]),
+            start_at: startAt.toISOString(),
+            pickup_location: $("o_p").value,
+            notes: $("o_c").value.trim(),
+            website: ""
+          })
+        });
+        var result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || "Permintaan belum berhasil disimpan.");
+        m.style.color = "var(--ok)";
+        m.textContent = "Berhasil masuk CRM! Kode: " + (result.request_code || "tercatat") + ". Admin akan menghubungi melalui WhatsApp.";
+        if (button) { button.textContent = "Permintaan Terkirim ✓"; }
+        var waText = "Halo NgontenYuk.co, saya baru mengirim permintaan sewa melalui katalog. Kode: " + (result.request_code || "-") + ". Mohon konfirmasi ketersediaan dan langkah selanjutnya.";
+        window.open("https://wa.me/" + WA + "?text=" + encodeURIComponent(waText), "_blank", "noopener");
+      } catch (error) {
+        m.style.color = "var(--bad)";
+        m.textContent = error.message || "Terjadi kesalahan saat mengirim permintaan.";
+        if (button) { button.disabled = false; button.textContent = "Coba Kirim Lagi"; }
       }
     }
 
-    function lockView() {
-      openModal(
-        '<button class="x-btn" data-c="1" aria-label="Tutup">✕</button>' +
-        '<h2>Login Ruangan Staff</h2>' +
-        '<div style="font-size:13.5px;color:var(--ink2)">Masukkan PIN akses staff untuk mengatur status ketersediaan unit.</div>' +
-        '<input class="fld" id="k_p" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" style="margin-top:12px;text-align:center;letter-spacing:0.3em;font-size:20px">' +
-        '<div id="sm" style="color:var(--bad);font-size:13px;font-weight:700;margin-top:6px"></div>' +
-        '<button class="btn-rent" style="margin-top:12px" data-un="1" type="button">Masuk ke Ruangan Staff →</button>'
-      );
-      setTimeout(function () { if ($("k_p")) $("k_p").focus(); }, 50);
-    }
-
-    function unlock() {
-      if ($("k_p").value.trim() === "264113") {
-        OPEN = true;
-        CAN = true;
-        PW = "264113";
-        $("btnStaff").classList.add("staff-on");
-        $("loginLabel").textContent = "Ruangan Staff";
-        if ($("staffFooterLabel")) $("staffFooterLabel").textContent = "Ruangan Staff (Aktif)";
-        openModal("");
-        staffView();
-      } else {
-        $("sm").textContent = "PIN salah, silakan coba lagi.";
-        $("k_p").value = "";
-        $("k_p").focus();
-      }
-    }
-
+    // Akses staf hanya melalui Staff RMS dengan Supabase Auth.
     document.addEventListener("click", function (e) {
       var t = e.target.closest("[data-d],[data-o],[data-du],[data-send],[data-sf],[data-un],[data-c],[data-k],[data-r],[data-ang],[data-faq]") || e.target;
       if (t.dataset.d) detail(t.dataset.d, 0);
@@ -1748,8 +1753,6 @@
         $("o_e").textContent = rp(CUR.prices[DU][1]);
       }
       else if (t.dataset.send) sendOrder();
-      else if (t.dataset.sf) setStatus(t.dataset.sf);
-      else if (t.dataset.un) unlock();
       else if (t.dataset.c || t === $("ov")) closeModal();
       else if (t.dataset.k) {
         F[t.dataset.k] = t.dataset.v;
@@ -1764,12 +1767,11 @@
 
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeModal();
-      if (e.key === "Enter" && e.target && e.target.id === "k_p") unlock();
     });
 
-    $("btnStaff").onclick = function () { OPEN ? (openModal(""), staffView()) : lockView(); };
+    $("btnStaff").onclick = function () { window.location.href = "/staff/"; };
     if ($("btnStaffFooter")) {
-      $("btnStaffFooter").onclick = function () { OPEN ? (openModal(""), staffView()) : lockView(); };
+      $("btnStaffFooter").onclick = function () { window.location.href = "/staff/"; };
     }
     $("so").onchange = function () { F.so = this.value; render(); };
     $("q").oninput = render;
@@ -1837,33 +1839,12 @@
       }
     };
 
-    function loadApi() {
-      UNITS.forEach(function (u) {
-        try {
-          var saved = localStorage.getItem("ny_status_" + u.id);
-          if (saved === "ok" || saved === "no") u.status = saved;
-        } catch (e) {}
-      });
-      render();
-
-      if (!API) return;
-      fetch(API + "?action=status").then(function (r) { return r.json(); }).then(function (o) {
-        UNITS.forEach(function (u) {
-          if (o[u.id] === "ok" || o[u.id] === "no") u.status = o[u.id];
-        });
-        render();
-      }).catch(function () {});
-
-      fetch(API + "?action=reviews").then(function (r) { return r.json(); }).then(function (a) {
-        if (Array.isArray(a) && a.length) { extra = a; renderRv(); }
-      }).catch(function () {});
-    }
+    function loadApi() { loadLiveCatalog(); }
 
     drawStars();
     renderRv();
-    render();
     loadApi();
-    if (API) setInterval(loadApi, 30000);
+    setInterval(loadApi, 60000);
   </script>
 </body>
 </html>
