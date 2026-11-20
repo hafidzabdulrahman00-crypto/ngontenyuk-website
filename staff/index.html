@@ -700,7 +700,7 @@ async function loadPayments(token=sessionRenderToken){
  $('paymentPendingTotal').textContent=rupiah(totalPending);
  $('paymentOutstandingTotal').textContent=rupiah(totalOutstanding);
  $('paymentOpenCount').textContent=summaries.filter(x=>x.remaining>0).length;
- $('paymentRentalRows').innerHTML=summaries.map(x=>'<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+rupiah(x.r.rental_price)+'</td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada rental.</td></tr>';
+ $('paymentRentalRows').innerHTML=summaries.map(x=>'<tr><td><b>'+safe(x.r.rental_code)+'</b></td><td>'+safe(x.r.customers?.name)+'</td><td>'+(Number(x.r.discount_amount||0)>0?'<span class="hint">Awal '+rupiah(x.r.original_rental_price??x.r.rental_price)+'</span><br><span class="hint">Diskon −'+rupiah(x.r.discount_amount)+'</span><br><b>'+rupiah(x.r.rental_price)+'</b>':'<b>'+rupiah(x.r.rental_price)+'</b>')+'</td><td>'+rupiah(x.paid)+'</td><td>'+rupiah(x.pending)+'</td><td>'+rupiah(x.remaining)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Belum ada rental.</td></tr>';
  $('paymentRows').innerHTML=paymentsCache.map(p=>{
   const r=rentalsCache.find(x=>x.id===p.rental_id);
   const canManage=['owner','admin'].includes(currentProfile?.role)&&['pending','paid'].includes(p.payment_status);
