@@ -1038,6 +1038,18 @@
       .float-left { left: 12px; }
       .float-right { right: 12px; }
     }
+
+    .staff-pin-overlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(8,15,30,.62);backdrop-filter:blur(12px)}
+    .staff-pin-overlay.show{display:flex}
+    .staff-pin-card{width:min(100%,390px);padding:28px;border:1px solid rgba(255,255,255,.55);border-radius:26px;background:rgba(255,255,255,.96);box-shadow:0 24px 80px rgba(0,0,0,.24);text-align:center;color:#172033}
+    .staff-pin-icon{width:54px;height:54px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;background:#eee9ff;color:#6c4acb;font-size:25px}
+    .staff-pin-card h2{margin:0 0 8px;font-size:22px}.staff-pin-card p{margin:0 0 18px;color:#697386;font-size:13px;line-height:1.5}
+    .staff-pin-input{width:100%;box-sizing:border-box;padding:14px 16px;border:1px solid #d7dce5;border-radius:13px;font-size:22px;letter-spacing:9px;text-align:center;outline:none}
+    .staff-pin-input:focus{border-color:#8061d8;box-shadow:0 0 0 3px rgba(128,97,216,.14)}
+    .staff-pin-submit{width:100%;margin-top:12px;padding:14px;border:0;border-radius:13px;background:#7354c7;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    .staff-pin-submit:disabled{opacity:.6;cursor:wait}.staff-pin-cancel{margin-top:12px;border:0;background:transparent;color:#697386;font-weight:600;cursor:pointer;padding:8px}
+    .staff-pin-message{min-height:18px;margin-top:10px!important;color:#c0394b!important;font-size:12px!important}
+
   </style>
 </head>
 <body>
@@ -1232,6 +1244,21 @@
   <!-- Interactive Modal Overlay -->
   <div class="ov" id="ov">
     <div class="modal" id="modal"></div>
+  </div>
+
+
+  <div class="staff-pin-overlay" id="staffPinOverlay" role="dialog" aria-modal="true" aria-labelledby="staffPinTitle">
+    <div class="staff-pin-card">
+      <div class="staff-pin-icon">⌑</div>
+      <h2 id="staffPinTitle">Ruangan Staff</h2>
+      <p>Masukkan PIN akses untuk melanjutkan ke halaman login petugas NgontenYuk.co.</p>
+      <form id="staffPinForm">
+        <input class="staff-pin-input" id="staffPinInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" aria-label="PIN enam digit" required>
+        <button class="staff-pin-submit" id="staffPinSubmit" type="submit">Verifikasi PIN</button>
+      </form>
+      <p class="staff-pin-message" id="staffPinMessage" aria-live="polite"></p>
+      <button class="staff-pin-cancel" id="staffPinCancel" type="button">Batal</button>
+    </div>
   </div>
 
   <script>
@@ -1769,10 +1796,66 @@
       if (e.key === "Escape") closeModal();
     });
 
-    $("btnStaff").onclick = function () { window.location.href = "/staff/"; };
-    if ($("btnStaffFooter")) {
-      $("btnStaffFooter").onclick = function () { window.location.href = "/staff/"; };
+    var staffPinOverlay = $("staffPinOverlay");
+    var staffPinForm = $("staffPinForm");
+    var staffPinInput = $("staffPinInput");
+    var staffPinSubmit = $("staffPinSubmit");
+    var staffPinMessage = $("staffPinMessage");
+    var staffPinNext = "/staff/";
+
+    function openStaffPin() {
+      staffPinInput.value = "";
+      staffPinMessage.textContent = "";
+      staffPinOverlay.classList.add("show");
+      setTimeout(function () { staffPinInput.focus(); }, 50);
     }
+    function closeStaffPin() {
+      staffPinOverlay.classList.remove("show");
+      staffPinInput.value = "";
+      staffPinMessage.textContent = "";
+    }
+    $("btnStaff").onclick = openStaffPin;
+    if ($("btnStaffFooter")) $("btnStaffFooter").onclick = openStaffPin;
+    $("staffPinCancel").onclick = closeStaffPin;
+    staffPinOverlay.addEventListener("click", function (event) {
+      if (event.target === staffPinOverlay) closeStaffPin();
+    });
+    staffPinForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var pin = staffPinInput.value.trim();
+      if (!/^\\d{6}$/.test(pin)) {
+        staffPinMessage.textContent = "Masukkan PIN yang terdiri dari 6 angka.";
+        return;
+      }
+      staffPinSubmit.disabled = true;
+      staffPinSubmit.textContent = "Memverifikasi...";
+      staffPinMessage.textContent = "";
+      try {
+        var response = await fetch(SUPABASE_URL + "/functions/v1/verify-staff-entry-pin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_PUBLIC_KEY
+          },
+          body: JSON.stringify({ pin: pin })
+        });
+        var result = await response.json().catch(function () { return {}; });
+        if (!response.ok || result.ok !== true) {
+          staffPinMessage.textContent = result.error || "PIN tidak sesuai. Silakan coba lagi.";
+          staffPinInput.value = "";
+          staffPinInput.focus();
+          return;
+        }
+        staffPinMessage.style.color = "#16804a";
+        staffPinMessage.textContent = "PIN benar. Mengalihkan...";
+        window.location.href = staffPinNext;
+      } catch (error) {
+        staffPinMessage.textContent = "Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.";
+      } finally {
+        staffPinSubmit.disabled = false;
+        staffPinSubmit.textContent = "Verifikasi PIN";
+      }
+    });
     $("so").onchange = function () { F.so = this.value; render(); };
     $("q").oninput = render;
     $("chatAdmin").href = $("navKontak").href = "https://wa.me/" + WA;
