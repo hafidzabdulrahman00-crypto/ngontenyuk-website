@@ -1047,8 +1047,11 @@
       .sort-pill select { max-width: 88px; font-size: 11px; }
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .card { padding: 10px; border-radius: 17px; gap: 8px; }
-      .card-title { font-size: 14px; line-height: 1.25; letter-spacing: -0.2px; margin: 0; }
+      .card-title { font-size: 14px; line-height: 1.25; letter-spacing: -0.2px; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
       .card-title small { font-size: 10px; }
+      .card-title .rec-inline-tag { margin: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; padding: 3px 7px; }
+      .card-badges { left: 6px; right: 6px; top: 6px; gap: 4px; align-items: flex-start; }
+      .badge-rec { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; text-align: center; padding: 4px 6px; }
       .card-visual { aspect-ratio: 1 / 1; border-radius: 12px; }
       .card-visual img.real-photo { width: 100%; height: 100%; max-height: none; object-fit: contain; padding: 5px; }
       .card-badges { gap: 4px; }
