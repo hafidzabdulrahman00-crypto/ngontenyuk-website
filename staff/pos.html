@@ -49,6 +49,10 @@ a{color:#7136D9}
 <section class="panel"><h2>4. Surat sewa & tanda tangan iPad</h2><p class="muted">Penyewa dan petugas dapat menandatangani area putih menggunakan stylus atau jari.</p><div class="grid"><div class="field"><label>Tanda tangan penyewa</label><canvas id="tenantSig" class="signature" aria-label="Tanda tangan penyewa"></canvas><div class="sigtools"><span>Gunakan stylus / jari</span><button class="btn ghost" type="button" data-clear="tenantSig">Bersihkan</button></div></div><div class="field"><label>Tanda tangan petugas</label><canvas id="staffSig" class="signature" aria-label="Tanda tangan petugas"></canvas><div class="sigtools"><span>Gunakan stylus / jari</span><button class="btn ghost" type="button" data-clear="staffSig">Bersihkan</button></div></div></div><div class="notice">Surat PDF dibuat terpisah untuk setiap rental, memuat data transaksi, ketentuan, dan kedua tanda tangan. File disimpan di penyimpanan privat dan dapat dibuka dari Staff RMS.</div></section>
 <section class="panel"><h2>5. Pembayaran</h2>
 <div class="grid">
+<div class="field"><label>Jenis diskon</label><select id="discountType"><option value="amount">Potongan nominal (Rp)</option><option value="percent">Potongan persentase (%)</option></select></div>
+<div class="field"><label for="discountInput">Nilai diskon</label><input id="discountInput" type="number" min="0" step="1" value="0" placeholder="Contoh: 5000"></div>
+<div class="field full"><label for="discountReason">Alasan diskon (opsional)</label><input id="discountReason" maxlength="200" placeholder="Contoh: diskon pelanggan / promo"></div>
+<div class="field full"><div class="quote" style="margin:0"><div class="muted">RINCIAN TAGIHAN</div><div id="discountBreakdown" class="hint">Harga awal Rp0 · Diskon Rp0</div><div class="total" id="finalTotal">Rp0</div><div class="hint">Total setelah diskon</div></div></div>
 <div class="field"><label>Metode pembayaran</label>
 <select id="method">
 <option value="cash">Tunai</option>
@@ -113,8 +117,11 @@ async function refreshAvailability(){
  if(selectedUnits.some(u=>conflictingUnitIds.has(u.id)))message('Ada unit di keranjang yang jadwalnya bertabrakan. Hapus unit tersebut sebelum checkout.','error');
 }
 function setEnd(){const s=$('start').value,d=Number($('duration').value);if(!s){$('end').value='';renderQuote();refreshAvailability().catch(e=>{availabilityError=e;message('Pemeriksaan jadwal gagal: '+e.message,'error');});return;}const date=new Date(s);date.setHours(date.getHours()+d);const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);$('end').value=local.toISOString().slice(0,16);renderQuote();refreshAvailability().catch(e=>{availabilityError=e;message('Pemeriksaan jadwal gagal: '+e.message,'error');});}
-function unitPrice(u){return priceFor(u.product_id,Number($('duration').value));}function addSelectedUnit(){const u=units.find(x=>x.id===$('unit').value);if(!u)return;if(availabilityError)return message('Ketersediaan jadwal belum berhasil diverifikasi. Coba muat ulang.','error');if(!activeUnit(u))return message('Unit tidak tersedia.','error');if(rentalWindow()&&conflictingUnitIds.has(u.id))return message('Unit '+u.unit_code+' sudah memiliki rental pada jadwal tersebut.','error');if(selectedUnits.some(x=>x.id===u.id))return message('Unit tersebut sudah ada di transaksi.');selectedUnits.push(u);$('unit').value='';renderQuote();}function removeCartUnit(id){selectedUnits=selectedUnits.filter(x=>x.id!==id);renderQuote();}function renderCart(){const box=$('cartList');if(!selectedUnits.length){box.innerHTML='<p class="hint">Belum ada unit dalam transaksi.</p>';return;}const w=rentalWindow();box.innerHTML=selectedUnits.map(u=>{const busy=!!w&&conflictingUnitIds.has(u.id);return '<div class="cart-item"><div><b>'+esc(u.products?.name||products.find(p=>p.id===u.product_id)?.name)+'</b><small>'+esc(u.unit_code)+' · '+$('duration').value+' jam · '+money(unitPrice(u)||0)+(busy?' · JADWAL BENTROK':'')+'</small></div><button type="button" data-remove="'+u.id+'">Hapus</button></div>';}).join('');}function renderQuote(){quote=selectedUnits.reduce((sum,u)=>sum+(unitPrice(u)||0),0);const w=rentalWindow(),busy=!!w&&selectedUnits.some(u=>conflictingUnitIds.has(u.id));const valid=selectedUnits.length>0&&selectedUnits.every(u=>unitPrice(u)!==null)&&!busy&&!availabilityError;$('total').textContent=money(quote);$('sideTotal').textContent=money(quote);if($('qrisAmount'))$('qrisAmount').textContent=money(quote);$('priceHint').textContent=availabilityError?'Ketersediaan jadwal gagal diverifikasi.':busy?'Ada unit dalam keranjang yang jadwalnya bertabrakan. Hapus unit tersebut.':!selectedUnits.length?'Tambahkan satu atau beberapa unit.':valid?selectedUnits.length+' unit · tarif Supabase × durasi '+$('duration').value+' jam':'Tarif belum tersedia untuk salah satu unit.';renderCart();renderSummary();}
-function renderSummary(){const names=selectedUnits.map(u=>(products.find(p=>p.id===u.product_id)?.name||'')+' · '+u.unit_code);$('summary').textContent=selectedUnits.length?['Jumlah unit: '+selectedUnits.length,'Unit: '+names.join(', '),'Pelanggan: '+($('customerName').value||'—'),'WhatsApp: '+($('customerPhone').value||'—'),'Durasi: '+$('duration').value+' jam','Mulai: '+($('start').value||'—'),'Selesai: '+($('end').value||'—'),'Total: '+money(quote)].join('\n'):'Belum ada unit dipilih.';}
+function unitPrice(u){return priceFor(u.product_id,Number($('duration').value));}function addSelectedUnit(){const u=units.find(x=>x.id===$('unit').value);if(!u)return;if(availabilityError)return message('Ketersediaan jadwal belum berhasil diverifikasi. Coba muat ulang.','error');if(!activeUnit(u))return message('Unit tidak tersedia.','error');if(rentalWindow()&&conflictingUnitIds.has(u.id))return message('Unit '+u.unit_code+' sudah memiliki rental pada jadwal tersebut.','error');if(selectedUnits.some(x=>x.id===u.id))return message('Unit tersebut sudah ada di transaksi.');selectedUnits.push(u);$('unit').value='';renderQuote();}function removeCartUnit(id){selectedUnits=selectedUnits.filter(x=>x.id!==id);renderQuote();}function renderCart(){const box=$('cartList');if(!selectedUnits.length){box.innerHTML='<p class="hint">Belum ada unit dalam transaksi.</p>';return;}const w=rentalWindow();box.innerHTML=selectedUnits.map(u=>{const busy=!!w&&conflictingUnitIds.has(u.id);return '<div class="cart-item"><div><b>'+esc(u.products?.name||products.find(p=>p.id===u.product_id)?.name)+'</b><small>'+esc(u.unit_code)+' · '+$('duration').value+' jam · '+money(unitPrice(u)||0)+(busy?' · JADWAL BENTROK':'')+'</small></div><button type="button" data-remove="'+u.id+'">Hapus</button></div>';}).join('');}function discountAmountFor(base){const raw=Math.max(0,Number($('discountInput')?.value)||0);if($('discountType')?.value==='percent')return Math.min(base,Math.round(base*Math.min(100,raw)/100));return Math.min(base,Math.round(raw));}
+function finalQuote(){return Math.max(0,quote-discountAmountFor(quote));}
+function allocateDiscount(prices,totalDiscount){let left=totalDiscount;return prices.map(x=>{const cut=Math.min(x.price,left);left-=cut;return {...x,discount:cut};});}
+function renderQuote(){quote=selectedUnits.reduce((sum,u)=>sum+(unitPrice(u)||0),0);const discount=discountAmountFor(quote),final=quote-discount;const w=rentalWindow(),busy=!!w&&selectedUnits.some(u=>conflictingUnitIds.has(u.id));const valid=selectedUnits.length>0&&selectedUnits.every(u=>unitPrice(u)!==null)&&!busy&&!availabilityError;$('total').textContent=money(final);$('sideTotal').textContent=money(final);$('finalTotal').textContent=money(final);$('discountBreakdown').textContent='Harga awal '+money(quote)+' · Diskon −'+money(discount);if($('qrisAmount'))$('qrisAmount').textContent=money(final);$('priceHint').textContent=availabilityError?'Ketersediaan jadwal gagal diverifikasi.':busy?'Ada unit dalam keranjang yang jadwalnya bertabrakan. Hapus unit tersebut.':!selectedUnits.length?'Tambahkan satu atau beberapa unit.':valid?selectedUnits.length+' unit · harga awal '+money(quote)+' · diskon '+money(discount):'Tarif belum tersedia untuk salah satu unit.';renderCart();renderSummary();}
+function renderSummary(){const names=selectedUnits.map(u=>(products.find(p=>p.id===u.product_id)?.name||'')+' · '+u.unit_code);const discount=discountAmountFor(quote);$('summary').textContent=selectedUnits.length?['Jumlah unit: '+selectedUnits.length,'Unit: '+names.join(', '),'Pelanggan: '+($('customerName').value||'—'),'WhatsApp: '+($('customerPhone').value||'—'),'Durasi: '+$('duration').value+' jam','Mulai: '+($('start').value||'—'),'Selesai: '+($('end').value||'—'),'Harga awal: '+money(quote),'Diskon: −'+money(discount),'Tagihan akhir: '+money(quote-discount)].join('\n'):'Belum ada unit dipilih.';}
 function signatureData(canvas){
  const sourceW=canvas.width,sourceH=canvas.height;
  const scale=Math.min(1,900/sourceW,320/sourceH);
@@ -154,7 +161,10 @@ function buildAgreementPdf(rental,tenantSig,staffSig,details){
  line('Mulai sewa',agreementDate(rental.start_at));
  line('Selesai sewa',agreementDate(rental.end_at));
  line('Durasi',details.duration+' jam');
- line('Harga sewa',money(rental.rental_price));
+ line('Harga awal',money(rental.original_rental_price??rental.rental_price));
+ line('Diskon',money(rental.discount_amount||0));
+ if(Number(rental.discount_amount||0)>0&&rental.discount_reason)line('Alasan diskon',rental.discount_reason);
+ line('Tagihan akhir',money(rental.rental_price));
  line('Verifikasi identitas',details.identity+' (KTP/KTM) telah diperiksa oleh petugas. Dokumen fisik tidak dicatat atau dikelola melalui sistem ini.');
  y+=3;
  doc.setFont('helvetica','bold');doc.setFontSize(11);
@@ -262,6 +272,8 @@ $('productGrid').addEventListener('click',e=>{const b=e.target.closest('[data-pr
 $('addUnit').addEventListener('click',addSelectedUnit);$('cartList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(b)removeCartUnit(b.dataset.remove);});
 $('duration').addEventListener('change',()=>{setEnd();renderQuote();});
 $('start').addEventListener('change',setEnd);
+['discountType','discountInput','discountReason'].forEach(id=>$(id).addEventListener('input',renderQuote));
+$('discountType').addEventListener('change',renderQuote);
 ['customerName','customerPhone'].forEach(id=>$(id).addEventListener('input',renderSummary));
 document.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{const c=$(b.dataset.clear),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);c.dataset.ink='0';}));
 getTenantSig=setupCanvas('tenantSig');getStaffSig=setupCanvas('staffSig');window.addEventListener('resize',resizeSignatures);
@@ -307,6 +319,9 @@ $('checkout').addEventListener('click',async()=>{
    const prices=selectedUnits.map(unit=>({unit,price:priceFor(unit.product_id,duration)}));
    if(prices.some(x=>x.price===null||x.price<=0))throw new Error('Tarif produk/durasi belum tersedia atau tidak valid untuk salah satu unit.');
    quote=prices.reduce((sum,x)=>sum+x.price,0);
+   const totalDiscount=discountAmountFor(quote);
+   const discountedPrices=allocateDiscount(prices,totalDiscount);
+   const discountReason=$('discountReason').value.trim();
    renderQuote();
    pendingCheckout={
     checkoutId:crypto.randomUUID(),
@@ -314,18 +329,20 @@ $('checkout').addEventListener('click',async()=>{
     customerPhone:phone,
     paymentMethod:method,
     cashReceived:method==='cash'&&$('cashReceived').checked,
-    items:prices.map(({unit})=>({
+    items:discountedPrices.map(({unit,discount})=>({
      unit_id:unit.id,
      start_at:startAt.toISOString(),
      end_at:endAt.toISOString(),
      identity_document_type:identity,
      tenant_signature_data:tenantSig,
-     staff_signature_data:staffSig
+     staff_signature_data:staffSig,
+     discount_amount:discount,
+     discount_reason:discount>0?discountReason:null
     })),
     tenantSig,staffSig,
     details:{name,phone,identity,duration,staffName:profile?.full_name||user?.email||'Petugas'},
     rentals:null,
-    total:quote
+    total:quote-totalDiscount
    };
   }else{
    message('Melanjutkan checkout yang sama. Sistem memakai ID transaksi yang sama agar tidak membuat rental/pembayaran duplikat.','info');
@@ -357,7 +374,7 @@ $('checkout').addEventListener('click',async()=>{
   pendingCheckout=null;
   message(
    'Transaksi berhasil dibuat untuk '+completed.rentals.length+
-   ' unit. Total '+money(completed.total)+
+   ' unit. Total akhir '+money(completed.total)+
    '. Semua PDF per rental berhasil disimpan. '+
    (completed.paymentMethod==='cash'?'Pembayaran tunai tercatat lunas.':completed.paymentMethod==='qris_manual'?'Gunakan QRIS statis resmi secara manual; pembayaran menunggu verifikasi petugas.':'Pembayaran menunggu verifikasi dana masuk.'),
    'success'
