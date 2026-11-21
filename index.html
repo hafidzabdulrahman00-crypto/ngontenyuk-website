@@ -1860,6 +1860,7 @@
         startAt.getFullYear() === dateParts[0] && startAt.getMonth() === dateParts[1] - 1 &&
         startAt.getDate() === dateParts[2] && startAt.getHours() === timeParts[0] &&
         startAt.getMinutes() === timeParts[1];
+      if (!validLocalDateTime || startAt.getTime() < Date.now() - 120000) {
         m.textContent = "Waktu mulai harus sekarang atau di masa mendatang.";
         return;
       }
