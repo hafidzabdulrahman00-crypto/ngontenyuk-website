@@ -1840,7 +1840,7 @@
         '<textarea class="fld" id="o_c" rows="2" maxlength="300" placeholder="Misal: tipe HP, keperluan acara, dll"></textarea>' +
         '<div class="est-row"><span>Estimasi Total</span><span id="o_e" style="color:var(--pu)">' + rp(CUR.prices[0][1]) + '</span></div>' +
         '<div id="o_m" style="color:var(--bad);font-size:13px;font-weight:700;margin-bottom:8px" aria-live="polite"></div>' +
-        '<button class="btn-rent" data-send="1" type="button">Kirim Permintaan Sewa →</button>'
+        '<button class="btn-rent" data-send="1" type="button">Kirim Pesanan →</button>'
       );
     }
 
@@ -1894,10 +1894,10 @@
 
       var waUrl = "https://wa.me/" + WA + "?text=" + encodeURIComponent(waText);
       m.style.color = "var(--ok)";
-      m.innerHTML = 'Format pemesanan siap dikirim melalui WhatsApp. Jika WhatsApp tidak terbuka otomatis, <a href="' +
+      m.innerHTML = 'Template pesanan sudah disiapkan. WhatsApp akan terbuka; periksa detailnya lalu tekan Kirim. Jika WhatsApp tidak terbuka otomatis, <a href="' +
         waUrl + '" target="_blank" rel="noopener noreferrer" style="color:var(--pu);text-decoration:underline">klik di sini untuk membuka WhatsApp</a>.';
       var button = document.querySelector('[data-send="1"]');
-      if (button) button.textContent = "Buka WhatsApp ✓";
+      if (button) button.textContent = "Kirim Pesanan ✓";
       window.open(waUrl, "_blank");
     }
 
