@@ -1892,13 +1892,13 @@
         "Mohon konfirmasi ketersediaan unit dan langkah selanjutnya. Terima kasih."
       ].join("\n");
 
-      var waUrl = "https://wa.me/" + WA + "?text=" + encodeURIComponent(waText);
+      var waUrl = "https://api.whatsapp.com/send?phone=" + WA + "&text=" + encodeURIComponent(waText);
       m.style.color = "var(--ok)";
       m.innerHTML = 'Template pesanan sudah disiapkan. WhatsApp akan terbuka; periksa detailnya lalu tekan Kirim. Jika WhatsApp tidak terbuka otomatis, <a href="' +
         waUrl + '" target="_blank" rel="noopener noreferrer" style="color:var(--pu);text-decoration:underline">klik di sini untuk membuka WhatsApp</a>.';
       var button = document.querySelector('[data-send="1"]');
       if (button) button.textContent = "Kirim Pesanan ✓";
-      window.open(waUrl, "_blank");
+      window.location.href = waUrl;
     }
 
     // Akses staf hanya melalui Staff RMS dengan Supabase Auth.
