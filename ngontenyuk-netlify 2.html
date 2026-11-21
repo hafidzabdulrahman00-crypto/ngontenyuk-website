@@ -785,6 +785,43 @@
       border-color: var(--pu);
       box-shadow: 0 0 0 3px rgba(91, 47, 214, 0.12);
     }
+
+    /* Mobile-friendly booking date and time controls */
+    .booking-datetime-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 10px;
+      width: 100%;
+    }
+    .booking-time-field { min-width: 0; }
+    .booking-time-field label {
+      display: block;
+      margin: 0 0 7px;
+      color: var(--ink2);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .booking-time-field input.fld {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      min-height: 50px;
+      margin: 0;
+      padding: 11px 10px;
+      font-size: 16px;
+      line-height: 1.25;
+      color: var(--ink);
+      background-color: #fff;
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-appearance: auto;
+      appearance: auto;
+      color-scheme: light;
+    }
+    @media (max-width: 380px) {
+      .booking-datetime-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 8px; }
+      .booking-time-field input.fld { padding-left: 8px; padding-right: 6px; }
+    }
     .star-pick { display: flex; gap: 4px; }
     .star-pick button {
       border: 0;
@@ -1776,8 +1813,9 @@
       if (!CUR) return;
       DU = 0;
       var now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      var defaultDt = now.toISOString().slice(0, 16);
+      var pad2 = function (value) { return String(value).padStart(2, "0"); };
+      var defaultDate = now.getFullYear() + "-" + pad2(now.getMonth() + 1) + "-" + pad2(now.getDate());
+      var defaultTime = pad2(now.getHours()) + ":" + pad2(now.getMinutes());
 
       openModal(
         '<button class="x-btn" data-c="1" aria-label="Tutup">✕</button>' +
@@ -1788,7 +1826,10 @@
           return '<button type="button" class="du' + (i === 0 ? ' on' : '') + '" data-du="' + i + '"><span>' + p[0] + '</span><b>' + rp(p[1]) + '</b></button>';
         }).join("") + '</div>' +
         '<h4>2. Tanggal &amp; Jam Mulai Sewa</h4>' +
-        '<input class="fld" type="datetime-local" id="o_t" value="' + defaultDt + '">' +
+        '<div class="booking-datetime-grid">' +
+          '<div class="booking-time-field"><label for="o_date">Tanggal mulai</label><input class="fld" type="date" id="o_date" value="' + defaultDate + '" required></div>' +
+          '<div class="booking-time-field"><label for="o_time">Jam mulai</label><input class="fld" type="time" id="o_time" value="' + defaultTime + '" step="60" required></div>' +
+        '</div>' +
         '<h4>3. Titik Temu (COD)</h4>' +
         '<select class="fld" id="o_p">' + SPOTS.map(function (s) { return '<option>' + s + '</option>'; }).join("") + '</select>' +
         '<h4>4. Nama Pemesan</h4>' +
@@ -1804,14 +1845,21 @@
     }
 
     function sendOrder() {
-      var t = $("o_t").value, n = $("o_n").value.trim(), phone = $("o_phone").value.trim(), m = $("o_m");
+      var dateValue = $("o_date").value, timeValue = $("o_time").value;
+      var n = $("o_n").value.trim(), phone = $("o_phone").value.trim(), m = $("o_m");
       if (DU < 0 || !CUR || !CUR.prices || !CUR.prices[DU]) { m.textContent = "Pilih durasi sewa terlebih dahulu."; return; }
-      if (!t) { m.textContent = "Isi tanggal dan jam mulai sewa."; return; }
+      if (!dateValue || !timeValue) { m.textContent = "Isi tanggal dan jam mulai sewa."; return; }
       if (!n || n.length < 2) { m.textContent = "Isi nama pemesan."; return; }
       if (!phone || phone.replace(/[^0-9]/g, "").length < 9) { m.textContent = "Isi nomor WhatsApp yang valid."; return; }
 
-      var p = CUR.prices[DU], startAt = new Date(t);
-      if (!Number.isFinite(startAt.getTime()) || startAt.getTime() < Date.now() - 120000) {
+      var dateParts = dateValue.split("-").map(Number);
+      var timeParts = timeValue.split(":").map(Number);
+      var p = CUR.prices[DU];
+      var startAt = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1], 0, 0);
+      var validLocalDateTime = dateParts.length === 3 && timeParts.length >= 2 &&
+        startAt.getFullYear() === dateParts[0] && startAt.getMonth() === dateParts[1] - 1 &&
+        startAt.getDate() === dateParts[2] && startAt.getHours() === timeParts[0] &&
+        startAt.getMinutes() === timeParts[1];
         m.textContent = "Waktu mulai harus sekarang atau di masa mendatang.";
         return;
       }
